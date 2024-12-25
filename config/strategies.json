@@ -1,0 +1,567 @@
+{
+  "CSP 60": {
+    "class": "io.edgebroker.gdm.signal.strategies.scanner.CspSignalScanner",
+    "default": {
+      "sentiments": ["Strong Bullish"],
+      "dte": 60,
+      "dteMax": [45, 80],
+      "deltas": [-0.20, -0.15],
+      "ivrMin": 20.0,
+      "oiMin": 400,
+      "profitMin": 200,
+      "rorMin": 3.5,
+      "putCallRatioOverallMin": 0.0,
+      "putCallRatioOverallMax": 0.8,
+      "putCallRatioExpMin": 0.0,
+      "putCallRatioExpMax": 0.8,
+      "volumeToOiMin": 0.05
+    },
+    "segments": {
+      "Technology": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.03,
+        "profitMin": 250
+      },
+      "Construction": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Semiconductors": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 400,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.03,
+        "profitMin": 200
+      },
+      "Consumer Discretionary": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Financials": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 400,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Healthcare": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Industrials": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Energy": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 350,
+        "ivrMin": 30.0,
+        "profitMin": 250
+      },
+      "Consumer Staples": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Entertainment": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Blue-Chips": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Bitcoin Companies": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 350,
+        "ivrMin": 30.0,
+        "profitMin": 300
+      },
+      "Airlines": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "SPY": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 500,
+        "ivrMin": 25.0,
+        "volumeToOiMin": 0.05,
+        "profitMin": 150
+      },
+      "QQQ": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 400,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 175
+      }
+    },
+    "scoreWeights": {
+      "delta": 40.0,
+      "dte": 35.0,
+      "deltaTargetProximity": -0.20,
+      "strikeProximity": 25.0,
+      "strikeBelowExpectedMovePenalty": -40.0,
+      "iv": 10.0,
+      "ror": 40.0,
+      "liquidity": 0.5,
+      "profit": 30.0,
+      "zgsCount": 10.0,
+      "topCount": 5.0,
+      "mmHedgeBehaviour": 15.0,
+      "zeroGammaProximity": 20.0
+    }
+  },  "CSP 45": {
+    "class": "io.edgebroker.gdm.signal.strategies.scanner.CspSignalScanner",
+    "default": {
+      "sentiments": ["Strong Bullish"],
+      "dte": 45,
+      "dteMax": [15, 60],
+      "deltas": [-0.30, -0.15],
+      "ivrMin": 20.0,
+      "oiMin": 300,
+      "profitMin": 150,
+      "rorMin": 3.0,
+      "putCallRatioOverallMin": 0.0,
+      "putCallRatioOverallMax": 0.9,
+      "putCallRatioExpMin": 0.0,
+      "putCallRatioExpMax": 0.9,
+      "volumeToOiMin": 0.05
+    },
+    "segments": {
+      "Technology": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.04,
+        "profitMin": 200
+      },
+      "Construction": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Semiconductors": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 350,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.04,
+        "profitMin": 200
+      },
+      "Consumer Discretionary": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Financials": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 350,
+        "ivrMin": 30.0,
+        "profitMin": 200
+      },
+      "Healthcare": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Industrials": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Energy": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 220
+      },
+      "Consumer Staples": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Entertainment": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Blue-Chips": {
+        "rorMin": 2.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "Bitcoin Companies": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 30.0,
+        "profitMin": 250
+      },
+      "Airlines": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "profitMin": 180
+      },
+      "SPY": {
+        "rorMin": 2.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 500,
+        "ivrMin": 25.0,
+        "volumeToOiMin": 0.05,
+        "profitMin": 150
+      },
+      "QQQ": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 400,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 175
+      }
+    },
+    "scoreWeights": {
+      "delta": 50.0,
+      "dte": 25.0,
+      "deltaTargetProximity": -0.25,
+      "strikeProximity": 30.0,
+      "strikeBelowExpectedMovePenalty": -50.0,
+      "iv": 0.0,
+      "ror": 50.0,
+      "liquidity": 0.5,
+      "profit": 50.0,
+      "zgsCount": 15.0,
+      "topCount": 7.5,
+      "mmHedgeBehaviour": 20.0,
+      "zeroGammaProximity": 25.0
+    }
+  },
+  "CSP 15": {
+    "class": "io.edgebroker.gdm.signal.strategies.scanner.CspSignalScanner",
+    "default": {
+      "sentiments": ["Strong Bullish", "Slightly Bullish"],
+      "dte": 15,
+      "dteMax": [7, 20],
+      "deltas": [-0.40, -0.25],
+      "ivrMin": 25.0,
+      "oiMin": 200,
+      "profitMin": 100,
+      "rorMin": 3.0,
+      "putCallRatioOverallMin": 0.0,
+      "putCallRatioOverallMax": 0.85,
+      "putCallRatioExpMin": 0.0,
+      "putCallRatioExpMax": 0.85,
+      "volumeToOiMin": 0.05
+    },
+    "segments": {
+      "Technology": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Construction": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 140
+      },
+      "Semiconductors": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 180
+      },
+      "Consumer Discretionary": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 170
+      },
+      "Financials": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 180
+      },
+      "Healthcare": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Industrials": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Energy": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 200
+      },
+      "Consumer Staples": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 25.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Entertainment": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Blue-Chips": {
+        "rorMin": 3.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      },
+      "Bitcoin Companies": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 200
+      },
+      "Airlines": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.06,
+        "profitMin": 150
+      }
+    },
+    "scoreWeights": {
+      "delta": 40.0,
+      "dte": 15.0,
+      "deltaTargetProximity": -0.35,
+      "strikeProximity": 40.0,
+      "strikeBelowExpectedMovePenalty": -75.0,
+      "iv": 150.0,
+      "ror": 100.0,
+      "liquidity": 0.5,
+      "profit": 75.0,
+      "zgsCount": 20.0,
+      "topCount": 10.0,
+      "mmHedgeBehaviour": 25.0,
+      "zeroGammaProximity": 30.0
+    }
+  },
+  "CSP 7": {
+    "class": "io.edgebroker.gdm.signal.strategies.scanner.CspSignalScanner",
+    "default": {
+      "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+      "dte": 7,
+      "dteMax": [3, 10],
+      "deltas": [-0.50, -0.35],
+      "ivrMin": 20.0,
+      "oiMin": 200,
+      "profitMin": 75,
+      "rorMin": 2.5,
+      "putCallRatioOverallMin": 0.0,
+      "putCallRatioOverallMax": 0.9,
+      "putCallRatioExpMin": 0.0,
+      "putCallRatioExpMax": 0.9,
+      "volumeToOiMin": 0.05
+    },
+    "segments": {
+      "Technology": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Construction": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+        "oiMin": 250,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 90
+      },
+      "Semiconductors": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 120
+      },
+      "Consumer Discretionary": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 110
+      },
+      "Financials": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 250,
+        "ivrMin": 35.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 120
+      },
+      "Healthcare": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Industrials": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Energy": {
+        "rorMin": 4.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 40.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 150
+      },
+      "Consumer Staples": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+        "oiMin": 200,
+        "ivrMin": 25.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Entertainment": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Blue-Chips": {
+        "rorMin": 3.5,
+        "sentiments": ["Strong Bullish", "Slightly Bullish", "Neutral"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      },
+      "Bitcoin Companies": {
+        "rorMin": 5.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 300,
+        "ivrMin": 40.0,
+        "volumeToOiMin": 0.08,
+        "profitMin": 150
+      },
+      "Airlines": {
+        "rorMin": 4.0,
+        "sentiments": ["Strong Bullish", "Slightly Bullish"],
+        "oiMin": 200,
+        "ivrMin": 30.0,
+        "volumeToOiMin": 0.07,
+        "profitMin": 100
+      }
+    },
+    "scoreWeights": {
+      "delta": 45.0,
+      "dte": 20.0,
+      "deltaTargetProximity": -0.40,
+      "strikeProximity": 50.0,
+      "strikeBelowExpectedMovePenalty": -100.0,
+      "iv": 100.0,
+      "ror": 75.0,
+      "liquidity": 0.7,
+      "profit": 100.0,
+      "zgsCount": 25.0,
+      "topCount": 12.5,
+      "mmHedgeBehaviour": 30.0,
+      "zeroGammaProximity": 35.0
+    }
+  }
+}

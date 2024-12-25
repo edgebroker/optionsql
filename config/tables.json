@@ -1,0 +1,12 @@
+{
+  "tables": [
+    "key_levels",
+    "optionchains",
+    "sentiment_ticker_expiration",
+    "sentiment_ticker_overall",
+    "ticker",
+    "ticker_expirations",
+    "top_strikes_ticker_expiration",
+    "zero_gamma_ticker_expiration"
+  ]
+}

@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.edgebroker.gdm</groupId> <!-- Updated to your package -->
+  <groupId>io.edgebroker.gdm</groupId>
   <artifactId>optionsql</artifactId>
   <version>1.0.0</version>
   <name>OptionsQL</name>
@@ -23,37 +23,35 @@
       <systemPath>${project.basedir}/lib/tws-api-9.73.01-SNAPSHOT.jar</systemPath>
     </dependency>
 
-    <!-- Vert.x Core -->
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-      <version>4.4.2</version>
-    </dependency>
-
-     <!-- PostgreSQL Driver -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>42.7.2</version>
     </dependency>
 
-    <!-- Vert.x JDBC Client for Postgres -->
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.15</version>
+    </dependency>
+
+    <!-- Updated Vert.x dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
+      <version>4.5.11</version>
+    </dependency>
+
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-jdbc-client</artifactId>
-      <version>4.4.2</version>
+      <version>4.5.11</version>
     </dependency>
 
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
-      <version>4.4.2</version> <!-- Use the latest stable version -->
-    </dependency>
-    
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.15</version>  <!-- Latest version as of now -->
+      <version>4.5.11</version>
     </dependency>
 
   </dependencies>
@@ -74,5 +72,4 @@
 
     </plugins>
   </build>
-
 </project>

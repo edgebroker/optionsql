@@ -1,4 +1,5 @@
 {
+  "serviceorder": ["orchestrate", "store", "fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
@@ -17,6 +18,7 @@
   "services": {
     "orchestrate": {},
     "fetch": {
+      "ticker": "config/ticker.json",
       "marketdata": {
         "token": "eDBUNWZodzVpMEl3VkRRUGtIYU5wVlYxdUxVNU9Na1R0VW9ZTGdQRmlHRT0",
         "urls": {
@@ -25,17 +27,14 @@
         }
       },
       "eventbus": {
-        "begin": "fetch.begin",
-        "data": "fetch.data",
-        "end": "fetch.end"
+        "data": "fetch.data"
       }
     },
     "store": {
       "eventbus": {
-        "begin": "fetch.begin",
-        "data": "fetch.data",
-        "end": "fetch.end"
-      }
+        "data": "fetch.data"
+      },
+      "preprocess": ["sql/schema/option_analytics.sql", "sql/schema/option_chains.sql" ]
     },
     "log": {
       "eventbus": {

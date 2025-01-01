@@ -4,7 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.optionsql.base.BaseVerticle;
+import org.optionsql.base.BaseService;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -13,7 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
-public class StoreVerticle extends BaseVerticle {
+public class StoreService extends BaseService {
 
     private String jdbcUrl;
     private String jdbcUser;
@@ -21,35 +21,8 @@ public class StoreVerticle extends BaseVerticle {
     private Connection dbConnection;
     private MessageConsumer<JsonObject> dataConsumer; // To manage the event bus listener
 
-    public StoreVerticle() {
+    public StoreService() {
         super("store");
-    }
-
-    @Override
-    protected void onSleep() {
-        getLogger().info("Store service going to sleep...");
-
-        // Unregister the event bus consumer
-        if (dataConsumer != null) {
-            dataConsumer.unregister()
-                    .onSuccess(v -> getLogger().info("Stopped listening for data."))
-                    .onFailure(err -> getLogger().severe("Failed to unregister event bus consumer: " + err.getMessage()));
-        }
-
-        closeDatabaseConnection();
-    }
-
-    @Override
-    protected void onAwake() {
-        getLogger().info("Store service waking up...");
-
-        openDatabaseConnection()
-                .compose(v -> preprocessSqlFiles())
-                .onSuccess(v -> {
-                    getLogger().info("Preprocessing completed. StoreVerticle is ready.");
-                    startListening(); // Start listening after the database is ready
-                })
-                .onFailure(err -> getLogger().severe("Error during preprocessing: " + err.getMessage()));
     }
 
     private void startListening() {
@@ -181,13 +154,11 @@ public class StoreVerticle extends BaseVerticle {
         jdbcUser = resourcesConfig.getString("user");
         jdbcPassword = resourcesConfig.getString("password");
 
-        getLogger().info("StoreVerticle started but sleeping.");
-        notifyAvailable();
+        getLogger().info("StoreService started but sleeping.");
     }
 
     @Override
     public void stop() throws Exception {
         super.stop();
-        notifyUnavailable();
     }
 }

@@ -1,5 +1,5 @@
 {
-  "serviceorder": ["orchestrate", "store", "fetch"],
+  "serviceorder": ["fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
@@ -7,16 +7,10 @@
       "database": "trading",
       "user": "trading",
       "password": "trading"
-    }
-  },
-  "eventbus": {
-    "available": "service.available",
-    "unavailable": "service.unavailable",
-    "sleep": "service.sleep",
-    "awake": "service.awake"
+    },
+    "archivepath": "./archive"
   },
   "services": {
-    "orchestrate": {},
     "fetch": {
       "ticker": "config/ticker.json",
       "marketdata": {
@@ -25,27 +19,14 @@
           "api": "https://api.marketdata.app/v1/options/chain/",
           "quotes": "https://api.marketdata.app/v1/stocks/quotes/"
         }
-      },
-      "eventbus": {
-        "data": "fetch.data"
       }
     },
+    "diff": {
+      "listen": "fetch.complete"
+     },
     "store": {
-      "eventbus": {
-        "data": "fetch.data"
-      },
+      "listen": "fetch.complete",
       "preprocess": ["sql/schema/option_analytics.sql", "sql/schema/option_chains.sql" ]
-    },
-    "log": {
-      "eventbus": {
-        "begin": "fetch.begin",
-        "data": "fetch.data",
-        "end": "fetch.end"
-      }
-    },
-    "analyze": {},
-    "signal": {},
-    "trade": {},
-    "observe": {}
+    }
   }
 }

@@ -4,67 +4,49 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.optionsql.base.BaseVerticle;
+import org.optionsql.base.BaseService;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class FetchVerticle extends BaseVerticle {
+public class FetchService extends BaseService {
 
     private String marketDataApiUrl;
     private String marketDataQuotesUrl;
     private String marketDataToken;
-    private String dataEventBusAddress;
     private JsonObject tickerConfig;
 
-    public FetchVerticle() {
+    public FetchService() {
         super("fetch");
     }
 
     @Override
-    protected void onSleep() {
-        getLogger().info("Fetch service going to sleep...");
-    }
-
-    @Override
-    protected void onAwake() {
-        getLogger().info("Fetch service waking up...");
-        processTickers()
-                .onSuccess(ignored -> {
-                    getLogger().info("All tickers processed successfully.");
-                    notifyAvailable();
-                })
-                .onFailure(err -> getLogger().severe("Failed to process tickers: " + err.getMessage()));
-    }
-
-    @Override
     public void start() throws Exception {
-        super.start();
+        try {
+            super.start();
 
-        // Load service-specific configuration
-        JsonObject fetchConfig = getServiceConfig();
-        JsonObject marketDataConfig = fetchConfig.getJsonObject("marketdata");
-        JsonObject eventBusConfig = fetchConfig.getJsonObject("eventbus");
+            // Load service-specific configuration
+            JsonObject fetchConfig = getServiceConfig();
+            JsonObject marketDataConfig = fetchConfig.getJsonObject("marketdata");
 
-        marketDataApiUrl = marketDataConfig.getJsonObject("urls").getString("api");
-        marketDataQuotesUrl = marketDataConfig.getJsonObject("urls").getString("quotes");
-        marketDataToken = marketDataConfig.getString("token");
-        dataEventBusAddress = eventBusConfig.getString("data");
+            marketDataApiUrl = marketDataConfig.getJsonObject("urls").getString("api");
+            marketDataQuotesUrl = marketDataConfig.getJsonObject("urls").getString("quotes");
+            marketDataToken = marketDataConfig.getString("token");
 
-        // Load ticker configuration from the specified file
-        String tickerFilePath = fetchConfig.getString("ticker");
-        tickerConfig = loadTickerConfig(tickerFilePath);
+            // Load ticker configuration from the specified file
+            String tickerFilePath = fetchConfig.getString("ticker");
+            tickerConfig = loadTickerConfig(tickerFilePath);
 
-        getLogger().info("FetchVerticle started and ready.");
-        notifyAvailable();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        super.stop();
-        notifyAvailable();
+            getLogger().info("FetchService started and ready.");
+            processTickers();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     private JsonObject loadTickerConfig(String filePath) {
@@ -87,7 +69,7 @@ public class FetchVerticle extends BaseVerticle {
         Queue<JsonObject> tickerQueue = new LinkedList<>();
         tickerConfig.getJsonObject("segments").forEach(entry -> {
             String segment = entry.getKey();
-            List<String> tickers = (List<String>) entry.getValue(); // Cast to List<String>
+            JsonArray tickers = (JsonArray) entry.getValue(); // Cast to List<String>
             tickers.forEach(ticker -> {
                 tickerQueue.add(new JsonObject().put("ticker", ticker).put("segment", segment));
             });
@@ -102,8 +84,40 @@ public class FetchVerticle extends BaseVerticle {
         // Return the future to indicate completion
         return processComplete.future()
                 .onSuccess(ignored -> {
-                    sendToEventBus(allOptionChains);
-                    getLogger().info("All tickers processed successfully.");
+                    try {
+                        // Get the archive path from the global config
+                        String archivePath = getGlobalConfig()
+                                .getJsonObject("resources")
+                                .getString("archivepath");
+
+                        // Format the current timestamp
+                        String timestamp = java.time.LocalDateTime.now()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+
+                        // Create the filename
+                        String filename = archivePath + "/" + timestamp + ".json";
+
+                        // Wrap the JsonArray in a JsonObject
+                        JsonObject wrappedData = new JsonObject()
+                                .put("timestamp", timestamp)
+                                .put("options", allOptionChains);
+
+                        // Save the JSON to a file
+                        saveJsonToFile(filename, wrappedData);
+
+                        // Publish the filename to fetch.complete
+                        JsonObject message = new JsonObject()
+                                .put("service", "fetch")
+                                .put("status", "success")
+                                .put("payload", filename);
+
+                        getEventBus().publish("fetch.complete", message);
+
+                        // Log the successful save
+                        getLogger().info("Saved option chains to file: " + filename);
+                    } catch (Exception e) {
+                        getLogger().severe("Failed to save option chains to file: " + e.getMessage());
+                    }
                 })
                 .onFailure(err -> getLogger().severe("Failed to process all tickers: " + err.getMessage()));
     }
@@ -364,13 +378,9 @@ public class FetchVerticle extends BaseVerticle {
         }
         return true;
     }
-
-    private void sendToEventBus(JsonArray allOptionChains) {
-        JsonObject payload = new JsonObject()
-                .put("timestamp", System.currentTimeMillis())
-                .put("data", allOptionChains);
-
-        getEventBus().publish(dataEventBusAddress, payload);
-        getLogger().info("Published option chains to EventBus address: " + dataEventBusAddress);
+    private void saveJsonToFile(String filename, JsonObject data) throws IOException {
+        Path path = Paths.get(filename);
+        Files.createDirectories(path.getParent()); // Ensure the directory exists
+        Files.write(path, data.encodePrettily().getBytes());
     }
 }

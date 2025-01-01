@@ -3,10 +3,9 @@ package org.optionsql;
 import io.vertx.core.Vertx;
 import io.vertx.core.Future;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.optionsql.fetch.FetchVerticle;
-import org.optionsql.orchestrate.OrchestratorVerticle;
-import org.optionsql.store.StoreVerticle;
+import org.optionsql.fetch.FetchService;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -31,7 +30,7 @@ public class OptionsQL {
         JsonObject config = loadConfiguration("config/optionsql.json");
 
         // Extract service order from the configuration
-        List<String> serviceOrder = config.getJsonArray("serviceorder").getList();
+        JsonArray serviceOrder = config.getJsonArray("serviceorder");
 
         // Deploy services in order
         deployServicesInOrder(vertx, config, serviceOrder)
@@ -39,11 +38,11 @@ public class OptionsQL {
                 .onFailure(err -> logger.severe("Service deployment failed: " + err.getMessage()));
     }
 
-    private static Future<Void> deployServicesInOrder(Vertx vertx, JsonObject config, List<String> serviceOrder) {
+    private static Future<Void> deployServicesInOrder(Vertx vertx, JsonObject config, JsonArray serviceOrder) {
         Future<Void> future = Future.succeededFuture();
 
-        for (String serviceName : serviceOrder) {
-            future = future.compose(ignored -> deployService(vertx, config, serviceName).mapEmpty());
+        for (Object serviceName : serviceOrder) {
+            future = future.compose(ignored -> deployService(vertx, config, (String)serviceName).mapEmpty());
         }
 
         return future;
@@ -53,23 +52,17 @@ public class OptionsQL {
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
         switch (serviceName) {
-            case "orchestrate":
-                logger.info("Deploying OrchestratorVerticle...");
-                return vertx.deployVerticle(OrchestratorVerticle.class, options)
-                        .onSuccess(id -> logger.info("OrchestratorVerticle deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy OrchestratorVerticle: " + err.getMessage()));
-
             case "fetch":
-                logger.info("Deploying FetchVerticle...");
-                return vertx.deployVerticle(FetchVerticle.class, options)
-                        .onSuccess(id -> logger.info("FetchVerticle deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy FetchVerticle: " + err.getMessage()));
+                logger.info("Deploying FetchService...");
+                return vertx.deployVerticle(FetchService.class, options)
+                        .onSuccess(id -> logger.info("FetchService deployed successfully with ID: " + id))
+                        .onFailure(err -> logger.severe("Failed to deploy FetchService: " + err.getMessage()));
 
-            case "store":
-                logger.info("Deploying StoreVerticle...");
-                return vertx.deployVerticle(StoreVerticle.class, options)
-                        .onSuccess(id -> logger.info("StoreVerticle deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy StoreVerticle: " + err.getMessage()));
+//            case "store":
+//                logger.info("Deploying StoreService...");
+//                return vertx.deployVerticle(StoreService.class, options)
+//                        .onSuccess(id -> logger.info("StoreService deployed successfully with ID: " + id))
+//                        .onFailure(err -> logger.severe("Failed to deploy StoreService: " + err.getMessage()));
 
             default:
                 logger.severe("Unknown service: " + serviceName);

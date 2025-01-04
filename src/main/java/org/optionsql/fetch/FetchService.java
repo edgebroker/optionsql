@@ -7,11 +7,16 @@ import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.zip.GZIPOutputStream;
 
 public class FetchService extends BaseService {
 
@@ -85,38 +90,19 @@ public class FetchService extends BaseService {
         return processComplete.future()
                 .onSuccess(ignored -> {
                     try {
-                        // Get the archive path from the global config
-                        String archivePath = getGlobalConfig()
-                                .getJsonObject("resources")
-                                .getString("archivepath");
 
-                        // Format the current timestamp
-                        String timestamp = java.time.LocalDateTime.now()
-                                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-
-                        // Create the filename
-                        String filename = archivePath + "/" + timestamp + ".json";
-
-                        // Wrap the JsonArray in a JsonObject
-                        JsonObject wrappedData = new JsonObject()
-                                .put("timestamp", timestamp)
-                                .put("options", allOptionChains);
-
-                        // Save the JSON to a file
-                        saveJsonToFile(filename, wrappedData);
-
-                        // Publish the filename to fetch.complete
+                        // Publish to fetch.complete
                         JsonObject message = new JsonObject()
                                 .put("service", "fetch")
                                 .put("status", "success")
-                                .put("payload", filename);
+                                .put("payload", allOptionChains);
 
                         getEventBus().publish("fetch.complete", message);
 
                         // Log the successful save
-                        getLogger().info("Saved option chains to file: " + filename);
+                        getLogger().info("Sent new dataset to fetch.complete");
                     } catch (Exception e) {
-                        getLogger().severe("Failed to save option chains to file: " + e.getMessage());
+                        getLogger().severe("Exception: " + e.getMessage());
                     }
                 })
                 .onFailure(err -> getLogger().severe("Failed to process all tickers: " + err.getMessage()));
@@ -170,7 +156,9 @@ public class FetchService extends BaseService {
                                     .put("ticker_symbol", ticker)
                                     .put("current_price", currentPrice)
                                     .put("segment", segment)
-                                    .put("options", optionsByExpiration);
+                                    .put("iv_historical_low", 0.0)
+                                    .put("iv_historical_high", 100.0)
+                                    .put("expirations", optionsByExpiration);
                         })
                 );
     }
@@ -306,7 +294,7 @@ public class FetchService extends BaseService {
                             .put("call_gamma", callGamma)
                             .put("call_theta", callTheta)
                             .put("call_vega", callVega)
-                            .put("call_open_interest", callOpenInterest)
+                            .put("call_oi", callOpenInterest)
                             .put("call_volume", volumes.getInteger(i))
                             .put("call_iv", ivs.getDouble(i))
                             .put("call_intrinsic_value", intrinsicValues.getDouble(i))
@@ -332,7 +320,7 @@ public class FetchService extends BaseService {
                             .put("put_gamma", putGamma)
                             .put("put_theta", putTheta)
                             .put("put_vega", putVega)
-                            .put("put_open_interest", putOpenInterest)
+                            .put("put_oi", putOpenInterest)
                             .put("put_volume", volumes.getInteger(i))
                             .put("put_iv", ivs.getDouble(i))
                             .put("put_intrinsic_value", intrinsicValues.getDouble(i))
@@ -377,10 +365,5 @@ public class FetchService extends BaseService {
             }
         }
         return true;
-    }
-    private void saveJsonToFile(String filename, JsonObject data) throws IOException {
-        Path path = Paths.get(filename);
-        Files.createDirectories(path.getParent()); // Ensure the directory exists
-        Files.write(path, data.encodePrettily().getBytes());
     }
 }

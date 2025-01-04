@@ -5,14 +5,15 @@ import io.vertx.core.Future;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.optionsql.analyze.AnalyzeService;
 import org.optionsql.fetch.FetchService;
+import org.optionsql.store.StoreService;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.logging.*;
 
 public class OptionsQL {
@@ -58,11 +59,17 @@ public class OptionsQL {
                         .onSuccess(id -> logger.info("FetchService deployed successfully with ID: " + id))
                         .onFailure(err -> logger.severe("Failed to deploy FetchService: " + err.getMessage()));
 
-//            case "store":
-//                logger.info("Deploying StoreService...");
-//                return vertx.deployVerticle(StoreService.class, options)
-//                        .onSuccess(id -> logger.info("StoreService deployed successfully with ID: " + id))
-//                        .onFailure(err -> logger.severe("Failed to deploy StoreService: " + err.getMessage()));
+            case "store":
+                logger.info("Deploying StoreService...");
+                return vertx.deployVerticle(StoreService.class, options)
+                        .onSuccess(id -> logger.info("StoreService deployed successfully with ID: " + id))
+                        .onFailure(err -> logger.severe("Failed to deploy StoreService: " + err.getMessage()));
+
+            case "analyze":
+                logger.info("Deploying AnalyzeService...");
+                return vertx.deployVerticle(AnalyzeService.class, options)
+                        .onSuccess(id -> logger.info("AnalyzeService deployed successfully with ID: " + id))
+                        .onFailure(err -> logger.severe("Failed to deploy AnalyzeService: " + err.getMessage()));
 
             default:
                 logger.severe("Unknown service: " + serviceName);

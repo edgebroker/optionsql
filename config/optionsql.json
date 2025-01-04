@@ -1,14 +1,13 @@
 {
-  "serviceorder": ["fetch"],
+  "serviceorder": ["analyze","store","fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
       "port": 5432,
-      "database": "trading",
+      "database": "simulation",
       "user": "trading",
       "password": "trading"
-    },
-    "archivepath": "./archive"
+    }
   },
   "services": {
     "fetch": {
@@ -21,12 +20,13 @@
         }
       }
     },
-    "diff": {
-      "listen": "fetch.complete"
-     },
     "store": {
       "listen": "fetch.complete",
       "preprocess": ["sql/schema/option_analytics.sql", "sql/schema/option_chains.sql" ]
+    },
+    "analyze": {
+      "listen": "store.complete",
+      "sqldir": "sql/analyze"
     }
   }
 }

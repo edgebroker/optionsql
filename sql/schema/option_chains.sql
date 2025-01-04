@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS ticker
     ticker_symbol      VARCHAR(10) PRIMARY KEY,
     segment            VARCHAR(50),
     current_price      NUMERIC(10, 2),
-    iv_historical_low  NUMERIC(6, 4),
-    iv_historical_high NUMERIC(6, 4),
+    iv_historical_low  NUMERIC(10, 4),
+    iv_historical_high NUMERIC(10, 4),
     last_updated       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

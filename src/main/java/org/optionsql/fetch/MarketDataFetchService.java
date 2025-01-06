@@ -6,26 +6,19 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.zip.GZIPOutputStream;
 
-public class FetchService extends BaseService {
+public class MarketDataFetchService extends BaseService {
 
     private String marketDataApiUrl;
     private String marketDataQuotesUrl;
     private String marketDataToken;
     private JsonObject tickerConfig;
 
-    public FetchService() {
+    public MarketDataFetchService() {
         super("fetch");
     }
 
@@ -46,7 +39,7 @@ public class FetchService extends BaseService {
             String tickerFilePath = fetchConfig.getString("ticker");
             tickerConfig = loadTickerConfig(tickerFilePath);
 
-            getLogger().info("FetchService started and ready.");
+            getLogger().info("MarketDataFetchService started and ready.");
             processTickers();
         } catch (Exception e) {
             e.printStackTrace();

@@ -5,9 +5,6 @@ import io.vertx.core.Future;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.optionsql.analyze.AnalyzeService;
-import org.optionsql.fetch.FetchService;
-import org.optionsql.store.StoreService;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,6 +13,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.logging.*;
 
+/**
+ * Entry point for the OptionsQL application.
+ */
 public class OptionsQL {
 
     private static final Logger logger = Logger.getLogger(OptionsQL.class.getName());
@@ -39,41 +39,46 @@ public class OptionsQL {
                 .onFailure(err -> logger.severe("Service deployment failed: " + err.getMessage()));
     }
 
+    /**
+     * Deploy services in the order specified by the configuration.
+     *
+     * @param vertx         the Vert.x instance
+     * @param config        the application configuration
+     * @param serviceOrder  the ordered array of service names
+     * @return a Future representing the completion of all deployments
+     */
     private static Future<Void> deployServicesInOrder(Vertx vertx, JsonObject config, JsonArray serviceOrder) {
         Future<Void> future = Future.succeededFuture();
 
         for (Object serviceName : serviceOrder) {
-            future = future.compose(ignored -> deployService(vertx, config, (String)serviceName).mapEmpty());
+            future = future.compose(ignored -> deployService(vertx, config, (String) serviceName).mapEmpty());
         }
 
         return future;
     }
 
+    /**
+     * Deploy a specific service based on the configuration.
+     *
+     * @param vertx        the Vert.x instance
+     * @param config       the application configuration
+     * @param serviceName  the name of the service to deploy
+     * @return a Future representing the deployment result
+     */
     private static Future<String> deployService(Vertx vertx, JsonObject config, String serviceName) {
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
-        switch (serviceName) {
-            case "fetch":
-                logger.info("Deploying FetchService...");
-                return vertx.deployVerticle(FetchService.class, options)
-                        .onSuccess(id -> logger.info("FetchService deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy FetchService: " + err.getMessage()));
+        String serviceClass = config.getJsonObject("services").getJsonObject(serviceName).getString("class");
 
-            case "store":
-                logger.info("Deploying StoreService...");
-                return vertx.deployVerticle(StoreService.class, options)
-                        .onSuccess(id -> logger.info("StoreService deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy StoreService: " + err.getMessage()));
-
-            case "analyze":
-                logger.info("Deploying AnalyzeService...");
-                return vertx.deployVerticle(AnalyzeService.class, options)
-                        .onSuccess(id -> logger.info("AnalyzeService deployed successfully with ID: " + id))
-                        .onFailure(err -> logger.severe("Failed to deploy AnalyzeService: " + err.getMessage()));
-
-            default:
-                logger.severe("Unknown service: " + serviceName);
-                return Future.failedFuture("Unknown service: " + serviceName);
+        logger.info("Deploying service: " + serviceName + " (" + serviceClass + ")");
+        try {
+            Class<?> clazz = Class.forName(serviceClass);
+            return vertx.deployVerticle(clazz.getName(), options)
+                    .onSuccess(id -> logger.info(serviceName + " deployed successfully with ID: " + id))
+                    .onFailure(err -> logger.severe("Failed to deploy " + serviceName + ": " + err.getMessage()));
+        } catch (ClassNotFoundException e) {
+            logger.severe("Service class not found: " + serviceClass);
+            return Future.failedFuture(e);
         }
     }
 
@@ -92,7 +97,6 @@ public class OptionsQL {
             try (FileInputStream configStream = new FileInputStream(configPath)) {
                 LogManager.getLogManager().readConfiguration(configStream);
             }
-            // Apply custom formatter to all handlers
             Logger rootLogger = LogManager.getLogManager().getLogger("");
             for (Handler handler : rootLogger.getHandlers()) {
                 handler.setFormatter(new NoMethodNameFormatter());
@@ -119,6 +123,9 @@ public class OptionsQL {
         }
     }
 
+    /**
+     * Custom formatter for logging that excludes method names.
+     */
     static class NoMethodNameFormatter extends Formatter {
         @Override
         public String format(LogRecord record) {

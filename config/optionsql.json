@@ -11,6 +11,7 @@
   },
   "services": {
     "fetch": {
+      "class": "org.optionsql.fetch.MarketDataFetchService",
       "ticker": "config/ticker.json",
       "marketdata": {
         "token": "eDBUNWZodzVpMEl3VkRRUGtIYU5wVlYxdUxVNU9Na1R0VW9ZTGdQRmlHRT0",
@@ -21,10 +22,12 @@
       }
     },
     "store": {
+      "class": "org.optionsql.store.StoreService",
       "listen": "fetch.complete",
       "preprocess": ["sql/schema/option_analytics.sql", "sql/schema/option_chains.sql" ]
     },
     "analyze": {
+      "class": "org.optionsql.analyze.AnalyzeService",
       "listen": "store.complete",
       "sqldir": "sql/analyze"
     }

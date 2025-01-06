@@ -5,6 +5,7 @@ import io.vertx.core.Future;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.optionsql.base.BaseService;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -72,8 +73,15 @@ public class OptionsQL {
 
         logger.info("Deploying service: " + serviceName + " (" + serviceClass + ")");
         try {
+            // Dynamically create the service with the service name
             Class<?> clazz = Class.forName(serviceClass);
-            return vertx.deployVerticle(clazz.getName(), options)
+            return vertx.deployVerticle(() -> {
+                        try {
+                            return (BaseService) clazz.getConstructor(String.class).newInstance(serviceName);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to create service instance: " + e.getMessage(), e);
+                        }
+                    }, options)
                     .onSuccess(id -> logger.info(serviceName + " deployed successfully with ID: " + id))
                     .onFailure(err -> logger.severe("Failed to deploy " + serviceName + ": " + err.getMessage()));
         } catch (ClassNotFoundException e) {

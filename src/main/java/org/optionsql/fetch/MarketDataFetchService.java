@@ -18,8 +18,8 @@ public class MarketDataFetchService extends BaseService {
     private String marketDataToken;
     private JsonObject tickerConfig;
 
-    public MarketDataFetchService() {
-        super("fetch");
+    public MarketDataFetchService(String serviceName) {
+        super(serviceName);
     }
 
     @Override

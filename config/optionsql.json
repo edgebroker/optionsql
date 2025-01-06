@@ -30,6 +30,30 @@
       "class": "org.optionsql.analyze.AnalyzeService",
       "listen": "store.complete",
       "sqldir": "sql/analyze"
+    },
+    "csp60": {
+      "class": "org.optionsql.signal.CspStrategy",
+      "listen": "analyze.complete",
+      "constrainsdir": "signal/csp_60",
+      "sqldir": "sql/signal/csp"
+    },
+    "csp45": {
+      "class": "org.optionsql.signal.CspStrategy",
+      "listen": "analyze.complete",
+      "constrainsdir": "signal/csp_45",
+      "sqldir": "sql/signal/csp"
+    },
+    "csp15": {
+      "class": "org.optionsql.signal.CspStrategy",
+      "listen": "analyze.complete",
+      "constrainsdir": "signal/csp_15",
+      "sqldir": "sql/signal/csp"
+    },
+    "csp7": {
+      "class": "org.optionsql.signal.CspStrategy",
+      "listen": "analyze.complete",
+      "constrainsdir": "signal/csp_7",
+      "sqldir": "sql/signal/csp"
     }
   }
 }

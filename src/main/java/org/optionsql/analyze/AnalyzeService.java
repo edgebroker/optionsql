@@ -25,8 +25,8 @@ public class AnalyzeService extends BaseService {
     private Connection dbConnection;
     private MessageConsumer<Void> consumer;
 
-    public AnalyzeService() {
-        super("analyze");
+    public AnalyzeService(String serviceName) {
+        super(serviceName);
     }
 
     @Override

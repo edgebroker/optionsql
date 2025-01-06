@@ -27,8 +27,8 @@ public class StoreService extends BaseService {
     private Connection dbConnection;
     private MessageConsumer<JsonObject> dataConsumer; // To manage the event bus listener
 
-    public StoreService() {
-        super("store");
+    public StoreService(String serviceName) {
+        super(serviceName);
     }
 
     private void startListening() {

@@ -119,8 +119,8 @@ public class StoreService extends BaseService {
     }
 
     private void storeTicker(JsonArray data) throws SQLException {
-        String query = "INSERT INTO ticker (ticker_symbol, current_price, segment, iv_historical_low, iv_historical_high) " +
-                       "VALUES (?, ?, ?, ?, ?) ";
+        String query = "INSERT INTO ticker (ticker_symbol, current_price, segment, iv_historical_low, iv_historical_high, next_earnings_date, next_earnings_time) " +
+                       "VALUES (?, ?, ?, ?, ?, ?, ?) ";
 
         for (int i = 0; i < data.size(); i++) {
             try (PreparedStatement stmt = dbConnection.prepareStatement(query)) {
@@ -130,6 +130,8 @@ public class StoreService extends BaseService {
                 stmt.setString(3, obj.getString("segment"));
                 stmt.setDouble(4, obj.getDouble("iv_historical_low"));
                 stmt.setDouble(5, obj.getDouble("iv_historical_high"));
+                stmt.setString(6, obj.getString("next_earnings_date"));
+                stmt.setString(7, obj.getString("next_earnings_time"));
                 stmt.executeUpdate();
             }
         }

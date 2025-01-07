@@ -9,12 +9,17 @@ import org.optionsql.base.BaseService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class MarketDataFetchService extends BaseService {
 
     private String marketDataApiUrl;
     private String marketDataQuotesUrl;
+    private String marketDataEarningsUrl;
     private String marketDataToken;
     private JsonObject tickerConfig;
 
@@ -33,6 +38,7 @@ public class MarketDataFetchService extends BaseService {
 
             marketDataApiUrl = marketDataConfig.getJsonObject("urls").getString("api");
             marketDataQuotesUrl = marketDataConfig.getJsonObject("urls").getString("quotes");
+            marketDataEarningsUrl = marketDataConfig.getJsonObject("urls").getString("earnings");
             marketDataToken = marketDataConfig.getString("token");
 
             // Load ticker configuration from the specified file
@@ -135,25 +141,42 @@ public class MarketDataFetchService extends BaseService {
     }
 
     private Future<JsonObject> processSingleTicker(String ticker, String segment) {
-        return fetchCurrentPrice(ticker)
-                .compose(currentPrice -> fetchOptionChain(ticker)
-                        .map(optionChainData -> {
-                            // First, merge the option data
-                            JsonArray mergedData = mergeOptionData(optionChainData);
+        return fetchNextEarnings(ticker)
+                .compose(nextEarnings -> {
+                    // Check if earnings are unavailable
+                    boolean hasEarnings = "ok".equals(nextEarnings.getString("s"));
 
-                            // Then, transform the merged data by grouping it by expiration
-                            JsonObject optionsByExpiration = transformOptionChain(mergedData);
+                    return fetchCurrentPrice(ticker)
+                            .compose(currentPrice -> fetchOptionChain(ticker)
+                                    .map(optionChainData -> {
+                                        // First, merge the option data
+                                        JsonArray mergedData = mergeOptionData(optionChainData);
 
-                            // Construct the final JSON structure for this ticker
-                            return new JsonObject()
-                                    .put("ticker_symbol", ticker)
-                                    .put("current_price", currentPrice)
-                                    .put("segment", segment)
-                                    .put("iv_historical_low", 0.0)
-                                    .put("iv_historical_high", 100.0)
-                                    .put("expirations", optionsByExpiration);
-                        })
-                );
+                                        // Then, transform the merged data by grouping it by expiration
+                                        JsonObject optionsByExpiration = transformOptionChain(mergedData);
+
+                                        // Construct the final JSON structure for this ticker
+                                        JsonObject result = new JsonObject()
+                                                .put("ticker_symbol", ticker)
+                                                .put("current_price", currentPrice)
+                                                .put("segment", segment)
+                                                .put("iv_historical_low", 0.0)
+                                                .put("iv_historical_high", 100.0)
+                                                .put("expirations", optionsByExpiration);
+
+                                        // Add earnings information conditionally
+                                        if (hasEarnings) {
+                                            result.put("next_earnings_date", convertUnixToDate(nextEarnings.getJsonArray("reportDate").getLong(0)))
+                                                    .put("next_earnings_time", nextEarnings.getJsonArray("reportTime").getString(0));
+                                        } else {
+                                            result.put("next_earnings_date", "N/A")
+                                                    .put("next_earnings_time", "N/A");
+                                        }
+
+                                        return result;
+                                    })
+                            );
+                });
     }
 
     private JsonObject transformOptionChain(JsonArray mergedData) {
@@ -206,6 +229,20 @@ public class MarketDataFetchService extends BaseService {
                         return Future.succeededFuture(response.getJsonArray("mid").getDouble(0));
                     } else {
                         return Future.failedFuture("Failed to fetch current price for ticker: " + ticker);
+                    }
+                });
+    }
+
+    private Future<JsonObject> fetchNextEarnings(String ticker) {
+        String url = marketDataEarningsUrl + ticker + "?token=" + marketDataToken;
+        return makeHttpRequest(url)
+                .compose(response -> {
+                    if ("ok".equals(response.getString("s"))) {
+                        return Future.succeededFuture(response);
+                    } else {
+                        JsonObject defaultResponse = new JsonObject()
+                                .put("s", "no earnings");
+                        return Future.succeededFuture(defaultResponse);
                     }
                 });
     }
@@ -358,5 +395,15 @@ public class MarketDataFetchService extends BaseService {
             }
         }
         return true;
+    }
+
+    public static String convertUnixToDate(long unixTimestamp) {
+        // Convert the Unix timestamp to LocalDate
+        LocalDate date = Instant.ofEpochSecond(unixTimestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        // Format the date as YYYY-MM-DD
+        return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 }

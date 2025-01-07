@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS ticker
     current_price      NUMERIC(10, 2),
     iv_historical_low  NUMERIC(10, 4),
     iv_historical_high NUMERIC(10, 4),
+    next_earnings_date VARCHAR(10),
+    next_earnings_time VARCHAR(20),
     last_updated       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

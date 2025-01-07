@@ -17,7 +17,8 @@
         "token": "eDBUNWZodzVpMEl3VkRRUGtIYU5wVlYxdUxVNU9Na1R0VW9ZTGdQRmlHRT0",
         "urls": {
           "api": "https://api.marketdata.app/v1/options/chain/",
-          "quotes": "https://api.marketdata.app/v1/stocks/quotes/"
+          "quotes": "https://api.marketdata.app/v1/stocks/quotes/",
+          "earnings": "https://api.marketdata.app/v1/stocks/earnings/"
         }
       }
     },
@@ -31,28 +32,28 @@
       "listen": "store.complete",
       "sqldir": "sql/analyze"
     },
-    "csp60": {
+    "csp_60": {
       "class": "org.optionsql.signal.CspStrategy",
       "listen": "analyze.complete",
-      "constrainsdir": "signal/csp_60",
+      "constrainsdir": "signal",
       "sqldir": "sql/signal/csp"
     },
-    "csp45": {
+    "csp_45": {
       "class": "org.optionsql.signal.CspStrategy",
       "listen": "analyze.complete",
-      "constrainsdir": "signal/csp_45",
+      "constrainsdir": "signal",
       "sqldir": "sql/signal/csp"
     },
-    "csp15": {
+    "csp_15": {
       "class": "org.optionsql.signal.CspStrategy",
       "listen": "analyze.complete",
-      "constrainsdir": "signal/csp_15",
+      "constrainsdir": "signal",
       "sqldir": "sql/signal/csp"
     },
-    "csp7": {
+    "csp_7": {
       "class": "org.optionsql.signal.CspStrategy",
       "listen": "analyze.complete",
-      "constrainsdir": "signal/csp_7",
+      "constrainsdir": "signal",
       "sqldir": "sql/signal/csp"
     }
   }

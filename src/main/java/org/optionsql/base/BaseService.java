@@ -109,22 +109,28 @@ public abstract class BaseService extends AbstractVerticle {
 
         // Parse the URL for path and query params
         String path = urlStr.substring(urlStr.indexOf("/v1"));
+
         return client
                 .get(path)
                 .send()
-                .map(response -> {
+                .compose(response -> {
                     if (response.statusCode() == 200 || response.statusCode() == 203) {
                         JsonObject jsonResponse = response.bodyAsJsonObject();
                         if (isDebugEnabled()) {
                             logger.info("Received response: " + jsonResponse.encodePrettily());
                         }
-                        return jsonResponse;
+                        return Future.succeededFuture(jsonResponse);
                     } else {
-                        logger.severe("HTTP request failed with status: " + response.statusCode());
-                        throw new RuntimeException("HTTP request failed with status: " + response.statusCode());
+                        return Future.failedFuture(new RuntimeException("HTTP request failed with status: " + response.statusCode()));
                     }
                 })
-                .onFailure(err -> logger.log(Level.SEVERE, "Error during HTTP request to: " + urlStr, err));
+                .recover(err -> {
+                    // Handle failures gracefully
+                    JsonObject fallbackResponse = new JsonObject()
+                            .put("s", "error")
+                            .put("message", err.getMessage());
+                    return Future.succeededFuture(fallbackResponse);
+                });
     }
 
     protected Future<Void> processSqlFile(Connection connection, String filePath) {

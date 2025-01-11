@@ -5,6 +5,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
+import org.optionsql.util.TestRequest;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +47,7 @@ public class MarketDataFetchService extends BaseService {
             tickerConfig = loadTickerConfig(tickerFilePath);
 
             getLogger().info("MarketDataFetchService started and ready.");
+            TestRequest.sendTickerDataRequest(getVertx(), "config/ticker.json");
             processTickers();
         } catch (Exception e) {
             e.printStackTrace();

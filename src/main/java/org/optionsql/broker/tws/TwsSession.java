@@ -1,6 +1,8 @@
 package org.optionsql.broker.tws;
 
 import com.ib.client.*;
+import io.vertx.core.Vertx;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,27 +11,30 @@ import java.util.logging.Logger;
 
 public class TwsSession extends DefaultEWrapper {
 
+    private final Vertx vertx;
     private final EJavaSignal signal;
     private final EClientSocket clientSocket;
     private final AtomicInteger requestIdCounter = new AtomicInteger();
     private final Logger logger;
     private final Map<Integer, PendingRequest> pendingRequests = new ConcurrentHashMap<>();
+    private CompletableFuture<Void> connectFuture;
 
-    public TwsSession(Logger logger) {
+    public TwsSession(Vertx vertx, Logger logger) {
+        this.vertx = vertx;
         this.logger = logger;
         signal = new EJavaSignal();
         clientSocket = new EClientSocket(this, signal);
     }
 
     public CompletableFuture<Void> connect(String host, int port, int clientId) {
-        CompletableFuture<Void> connectFuture = new CompletableFuture<>();
         clientSocket.setAsyncEConnect(false);
         clientSocket.eConnect(host, port, clientId);
 
         EReader reader = new EReader(clientSocket, signal);
         reader.start();
 
-        new Thread(() -> {
+        // Run the TWS event loop in a Vert.x worker thread
+        vertx.executeBlocking(promise -> {
             while (clientSocket.isConnected()) {
                 signal.waitForSignal();
                 try {
@@ -38,9 +43,22 @@ public class TwsSession extends DefaultEWrapper {
                     logger.severe("Error processing TWS messages: " + e.getMessage());
                 }
             }
-        }).start();
+            promise.complete();
+        }, res -> logger.info("TWS event loop terminated."));
 
         return connectFuture;
+    }
+    @Override
+    public void connectAck() {
+        vertx.runOnContext(v -> {
+            if (clientSocket.isConnected()) {
+                logger.info("Successfully connected to TWS.");
+                connectFuture.complete(null);
+            } else {
+                logger.severe("Failed to connect to TWS.");
+                connectFuture.completeExceptionally(new RuntimeException("Connection failed."));
+            }
+        });
     }
 
     public void disconnect() {
@@ -52,7 +70,7 @@ public class TwsSession extends DefaultEWrapper {
         int reqId = requestIdCounter.incrementAndGet();
         PendingRequest request = new PendingRequest(listener, new CompletableFuture<>());
         pendingRequests.put(reqId, request);
-        clientSocket.reqMktData(reqId, contract, "", false, false, null);
+        clientSocket.reqMktData(reqId, contract, "", true, false, null);
         logger.info("Market data request sent for: " + contract.symbol() + " with reqId: " + reqId);
     }
 
@@ -66,47 +84,54 @@ public class TwsSession extends DefaultEWrapper {
 
     @Override
     public void tickPrice(int reqId, int field, double price, TickAttrib attribs) {
-        logger.info("Tick price for: " + reqId + " field: " + field + " price: " + price);
-        PendingRequest request = pendingRequests.get(reqId);
-        if (request != null) {
-            request.listener.onTickPrice(reqId, field, price);
-            request.future.complete(price);
-        }
+        vertx.runOnContext(v -> {
+            logger.info("Tick price for: " + reqId + " field: " + field + " price: " + price);
+            PendingRequest request = pendingRequests.get(reqId);
+            if (request != null) {
+                request.listener.onTickPrice(reqId, field, price);
+                request.future.complete(price);
+            }
+        });
     }
 
     @Override
     public void historicalData(int reqId, Bar bar) {
-        logger.info("Historical data for: " + reqId + " bar: " + bar);
-        PendingRequest request = pendingRequests.get(reqId);
-        if (request != null) {
-            request.listener.onHistoricalData(reqId, bar);
-        }
+        vertx.runOnContext(v -> {
+            logger.info("Historical data for: " + reqId + " bar: " + bar);
+            PendingRequest request = pendingRequests.get(reqId);
+            if (request != null) {
+                request.listener.onHistoricalData(reqId, bar);
+            }
+        });
     }
 
     @Override
     public void historicalDataEnd(int reqId, String startDate, String endDate) {
-        logger.info("Historical data End for: " + reqId + " startDate: " + startDate+ " endDate: " + endDate);
-        PendingRequest request = pendingRequests.get(reqId);
-        if (request != null) {
-            request.listener.onHistoricalDataEnd(reqId, startDate, endDate);
-            pendingRequests.remove(reqId);
-        }
+        vertx.runOnContext(v -> {
+            logger.info("Historical data End for: " + reqId + " startDate: " + startDate + " endDate: " + endDate);
+            PendingRequest request = pendingRequests.get(reqId);
+            if (request != null) {
+                request.listener.onHistoricalDataEnd(reqId, startDate, endDate);
+                pendingRequests.remove(reqId);
+            }
+        });
     }
 
     @Override
     public void error(int id, int errorCode, String errorMsg, String advancedOrderRejectJson) {
-        PendingRequest request = pendingRequests.get(id);
-        if (request != null) {
-            request.listener.onError(id, errorCode, errorMsg);
-            request.future.completeExceptionally(new RuntimeException(errorMsg));
-        } else if (errorCode == 2104 || errorCode == 2106 || errorCode == 2158) {
-            logger.info("[TWS Status] Code: " + errorCode + ", Msg: " + errorMsg);
-        } else {
-            logger.severe("Error [ID: " + id + "] Code: " + errorCode + ", Msg: " + errorMsg);
-        }
+        vertx.runOnContext(v -> {
+            PendingRequest request = pendingRequests.get(id);
+            if (request != null) {
+                request.listener.onError(id, errorCode, errorMsg);
+                request.future.completeExceptionally(new RuntimeException(errorMsg));
+            } else if (errorCode == 2104 || errorCode == 2106 || errorCode == 2158) {
+                logger.info("[TWS Status] Code: " + errorCode + ", Msg: " + errorMsg);
+            } else {
+                logger.severe("Error [ID: " + id + "] Code: " + errorCode + ", Msg: " + errorMsg);
+            }
+        });
     }
 
-    // New inner class to manage pending requests
     private static class PendingRequest {
         private final TwsListener listener;
         private final CompletableFuture<Double> future;

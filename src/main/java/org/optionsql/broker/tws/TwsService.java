@@ -11,14 +11,14 @@ import java.util.logging.Level;
 
 public class TwsService extends BaseService {
 
-    private final TwsSession twsSession;
+    private TwsSession twsSession;
     private String hostname;
     private int port;
     private int clientId;
+    private TwsRequestManager twsRequestManager;
 
     public TwsService(String serviceName) {
         super(serviceName);
-        twsSession = new TwsSession(getVertx(), getLogger());
     }
 
     @Override
@@ -39,10 +39,17 @@ public class TwsService extends BaseService {
     }
 
     private CompletableFuture<Void> initializeTwsConnection() {
-        getLogger().info("Initializing TWS connection to " + hostname + ":" + port);
-        return twsSession.connect(hostname, port, clientId).thenRun(() ->
-                getLogger().info("Connected to TWS at " + hostname + ":" + port)
-        );
+        try {
+            twsSession = new TwsSession(getVertx(), getLogger());
+            twsRequestManager = new TwsRequestManager(twsSession);
+            getLogger().info("Initializing TWS connection to " + hostname + ":" + port);
+            return twsSession.connect(hostname, port, clientId).thenRun(() ->
+                    getLogger().info("Connected to TWS at " + hostname + ":" + port)
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     private void listenForRequests() {
@@ -72,16 +79,22 @@ public class TwsService extends BaseService {
         CompletableFuture<?>[] futures = tickers.stream().map(tickerObj -> {
             String symbol = (String) tickerObj;
 
-            HistIV histIVRequest = new HistIV(twsSession);
-            MarketPrice marketPriceRequest = new MarketPrice(twsSession);
+//            HistIV histIVRequest = new HistIV(twsRequestManager);
+//            MarketPrice marketPriceRequest = new MarketPrice(twsRequestManager);
+            OptionChains optionChains = new OptionChains(twsRequestManager);
 
             CompletableFuture<Void> combinedFuture = CompletableFuture.allOf(
-                    histIVRequest.fetchHistoricalIV(symbol),
-                    marketPriceRequest.fetchMarketPrice(symbol)
-            ).thenAccept(v -> response.put(symbol, new JsonObject()
-                    .put("current_price", marketPriceRequest.getCurrentPrice())
-                    .put("iv_low", histIVRequest.getHistoricalLowIV())
-                    .put("iv_high", histIVRequest.getHistoricalHighIV())));
+//                    histIVRequest.fetchHistoricalIV(symbol),
+//                    marketPriceRequest.fetchMarketPrice(symbol)
+                    optionChains.fetchOptionChains(symbol)
+            ).thenAccept(v -> {
+                response.put(symbol, new JsonObject()
+//                        .put("current_price", marketPriceRequest.getCurrentPrice())
+//                        .put("iv_low", histIVRequest.getHistoricalLowIV())
+//                        .put("iv_high", histIVRequest.getHistoricalHighIV()));
+                        .put("optionchains", optionChains.fetchOptionChains(symbol)));
+                getLogger().info("Ticker data added: " + response.getJsonObject(symbol).encodePrettily());
+            });
 
             return combinedFuture;
         }).toArray(CompletableFuture[]::new);

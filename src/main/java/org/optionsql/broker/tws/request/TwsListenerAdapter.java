@@ -1,4 +1,4 @@
-package org.optionsql.broker.tws;
+package org.optionsql.broker.tws.request;
 
 import com.ib.client.Bar;
 import com.ib.client.Contract;
@@ -43,8 +43,8 @@ public class TwsListenerAdapter implements TwsListener {
     }
 
     @Override
-    public void onTickPrice(int tickerId, int field, double price) {
-
+    public boolean onTickPrice(int tickerId, int field, double price) {
+        return true;
     }
 
     @Override
@@ -54,7 +54,6 @@ public class TwsListenerAdapter implements TwsListener {
 
     @Override
     public void onTickSize(int tickerId, int field, int size) {
-
     }
 
     @Override
@@ -63,8 +62,8 @@ public class TwsListenerAdapter implements TwsListener {
     }
 
     @Override
-    public void onTickOptionComputation(int tickerId, double impliedVolatility, double delta, double gamma, double vega, double theta, double optPrice, double pvDividend) {
-
+    public boolean onTickOptionComputation(int tickerId, double impliedVolatility, double delta, double gamma, double vega, double theta, double optPrice, double pvDividend) {
+       return true;
     }
 
     @Override

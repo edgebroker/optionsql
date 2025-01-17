@@ -1,6 +1,11 @@
-package org.optionsql.broker.tws;
+package org.optionsql.broker.tws.task;
 
 import com.ib.client.Contract;
+import org.optionsql.broker.tws.request.TwsListenerAdapter;
+import org.optionsql.broker.tws.request.TwsRequest;
+import org.optionsql.broker.tws.request.TwsRequestManager;
+import org.optionsql.broker.tws.request.TwsSession;
+
 import java.util.concurrent.CompletableFuture;
 
 public class MarketPrice {
@@ -24,11 +29,13 @@ public class MarketPrice {
             public void execute(TwsSession sess, Runnable onComplete) {
                 sess.requestMarketData(contract, new TwsListenerAdapter() {
                     @Override
-                    public void onTickPrice(int tickerId, int field, double price) {
+                    public boolean onTickPrice(int tickerId, int field, double price) {
                         if (currentPrice == -1 && (field == 4 || field == 9)) { // LAST_PRICE or CLOSE_PRICE
                             currentPrice = price;
                             completeRequest(null, onComplete);
+                            return true;
                         }
+                        return false;
                     }
 
                     @Override

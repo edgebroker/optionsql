@@ -1,4 +1,4 @@
-package org.optionsql.broker.tws;
+package org.optionsql.broker.tws.request;
 
 @FunctionalInterface
 public interface TwsRequest {

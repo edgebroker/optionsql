@@ -22,6 +22,9 @@ public class AnalyzeService extends BaseService {
     private String jdbcUrl;
     private String jdbcUser;
     private String jdbcPassword;
+    private String hostname;
+    private int port;
+    private String database;
     private Connection dbConnection;
     private MessageConsumer<Void> consumer;
 
@@ -34,13 +37,16 @@ public class AnalyzeService extends BaseService {
         super.start();
 
         // Load configuration
-        this.listenAddress = getServiceConfig().getString("listen");
-        this.sqlDir = getServiceConfig().getString("sqldir");
-        var resourcesConfig = getGlobalConfig().getJsonObject("resources").getJsonObject("postgres");
-        this.jdbcUrl = "jdbc:postgresql://" + resourcesConfig.getString("hostname") + ":" +
-                       resourcesConfig.getInteger("port") + "/" + resourcesConfig.getString("database");
-        this.jdbcUser = resourcesConfig.getString("user");
-        this.jdbcPassword = resourcesConfig.getString("password");
+        JsonObject resourcesConfig = getGlobalConfig().getJsonObject("resources").getJsonObject("postgres");
+        JsonObject serviceConfig = getServiceConfig();
+        hostname = resourcesConfig.getString("hostname");
+        port = resourcesConfig.getInteger("port");
+        database = serviceConfig.getString("database");
+        jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + database;
+        jdbcUser = resourcesConfig.getString("user");
+        jdbcPassword = resourcesConfig.getString("password");
+        listenAddress = serviceConfig.getString("listen");
+        sqlDir = serviceConfig.getString("sqldir");
         openDatabaseConnection();
         startListening();
         getLogger().info("Analyze service started.");

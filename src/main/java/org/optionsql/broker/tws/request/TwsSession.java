@@ -1,4 +1,4 @@
-package org.optionsql.broker.tws;
+package org.optionsql.broker.tws.request;
 
 import com.ib.client.*;
 import io.vertx.core.Vertx;
@@ -77,7 +77,6 @@ public class TwsSession extends DefaultEWrapper {
 
         // Request live market data
         clientSocket.reqMktData(reqId, contract, "", true, false, null);
-        logger.info("Market data request sent for: " + contract.symbol() + " with reqId: " + reqId);
     }
 
     public void requestHistoricalData(Contract contract, String duration, String barSize, String whatToShow, TwsListener listener) {
@@ -86,13 +85,11 @@ public class TwsSession extends DefaultEWrapper {
         pendingRequests.put(reqId, request);
 
         clientSocket.reqHistoricalData(reqId, contract, "", duration, barSize, whatToShow, 1, 1, false, null);
-        logger.info("Requested historical data for: " + contract.symbol());
     }
 
     @Override
     public void historicalData(int reqId, Bar bar) {
         vertx.runOnContext(v -> {
-            logger.info("Historical data received for reqId: " + reqId + " - Time: " + bar.time() + ", Close: " + bar.close());
             PendingRequest request = pendingRequests.get(reqId);
             if (request != null) {
                 request.listener.onHistoricalData(reqId, bar);
@@ -103,7 +100,6 @@ public class TwsSession extends DefaultEWrapper {
     @Override
     public void historicalDataEnd(int reqId, String startDate, String endDate) {
         vertx.runOnContext(v -> {
-            logger.info("Historical data completed for reqId: " + reqId + " from " + startDate + " to " + endDate);
             PendingRequest request = pendingRequests.get(reqId);
             if (request != null) {
                 request.listener.onHistoricalDataEnd(reqId, startDate, endDate);
@@ -111,33 +107,10 @@ public class TwsSession extends DefaultEWrapper {
             }
         });
     }
-    
-    public void requestOptionExpirations(String symbol, int conid, TwsListener listener) {
-        int reqId = requestIdCounter.incrementAndGet();
-        pendingRequests.put(reqId, new PendingRequest(listener, new CompletableFuture<>()));
-
-        clientSocket.reqSecDefOptParams(reqId, symbol, "", "STK", conid);
-        logger.info("Requested option expirations for: " + symbol + " with conid: " + conid);
-    }
-    
-    public void requestContractDetails(String symbol, TwsListener listener) {
-        Contract contract = new Contract();
-        contract.symbol(symbol);
-        contract.secType("STK");
-        contract.exchange("SMART");
-        contract.currency("USD");
-
-        int reqId = requestIdCounter.incrementAndGet();
-        pendingRequests.put(reqId, new PendingRequest(listener, new CompletableFuture<>()));
-
-        clientSocket.reqContractDetails(reqId, contract);
-        logger.info("Requested contract details for: " + symbol);
-    }
 
     @Override
     public void contractDetails(int reqId, ContractDetails contractDetails) {
         vertx.runOnContext(v -> {
-            logger.info("Received contract details: " + contractDetails.contract().symbol() + " conid: " + contractDetails.contract().conid());
             PendingRequest request = pendingRequests.get(reqId);
 
             if (request != null) {
@@ -145,19 +118,6 @@ public class TwsSession extends DefaultEWrapper {
                 pendingRequests.remove(reqId);
             }
         });
-    }
-
-    /** Request Market Data for Specific Option (Call/Put) */
-    public void requestOptionMarketData(Contract optionContract, TwsListener listener) {
-        int reqId = requestIdCounter.incrementAndGet();
-        PendingRequest request = new PendingRequest(listener, new CompletableFuture<>());
-        pendingRequests.put(reqId, request);
-
-        clientSocket.reqMktData(reqId, optionContract, "", true, false, null);
-        logger.info("Requested option market data for: " + optionContract.symbol() +
-                    " Expiration: " + optionContract.lastTradeDateOrContractMonth() +  // Added expiration
-                    " Strike: " + optionContract.strike() +
-                    " Type: " + optionContract.right());
     }
 
     @Override
@@ -175,22 +135,24 @@ public class TwsSession extends DefaultEWrapper {
 
     @Override
     public void tickOptionComputation(int reqId, int field, int tickAttrib, double impliedVol, double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice) {
-        logger.info("tickOptionComputation for: " + reqId);
         vertx.runOnContext(v -> {
             PendingRequest request = pendingRequests.get(reqId);
             if (request != null) {
-                request.listener.onTickOptionComputation(reqId, impliedVol, delta, gamma, vega, theta, optPrice, pvDividend);
+                if (request.listener.onTickOptionComputation(reqId, impliedVol, delta, gamma, vega, theta, optPrice, pvDividend)) {
+                    pendingRequests.remove(reqId);
+                }
             }
         });
     }
 
     @Override
     public void tickPrice(int reqId, int field, double price, TickAttrib attribs) {
-        logger.info("Tick price for: " + reqId + " field: " + field + " price: " + price);
         vertx.runOnContext(v -> {
             PendingRequest request = pendingRequests.get(reqId);
             if (request != null) {
-                request.listener.onTickPrice(reqId, field, price);
+                if (request.listener.onTickPrice(reqId, field, price)){
+                    pendingRequests.remove(reqId);
+                }
             }
         });
     }

@@ -2,9 +2,12 @@ package org.optionsql.broker.tws;
 
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
+import org.optionsql.broker.tws.request.TwsRequestManager;
+import org.optionsql.broker.tws.request.TwsSession;
+import org.optionsql.broker.tws.task.HistIV;
+import org.optionsql.broker.tws.task.MarketPrice;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -47,7 +50,6 @@ public class TwsService extends BaseService {
                     getLogger().info("Connected to TWS at " + hostname + ":" + port)
             );
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -56,55 +58,47 @@ public class TwsService extends BaseService {
         EventBus eventBus = getEventBus();
         String listenAddress = getServiceConfig().getString("listen", "broker.request");
 
-        eventBus.consumer(listenAddress, this::handleRequest);
+        eventBus.consumer(listenAddress + ".get_current_price", this::handleGetCurrentPriceRequest);
+        eventBus.consumer(listenAddress + ".get_hist_iv", this::handleGetHistIVRequest);
+
         getLogger().info("TwsService is now listening on: " + listenAddress);
     }
 
-    private void handleRequest(Message<JsonObject> message) {
-        JsonObject request = message.body();
-        getLogger().info("Received request: " + request.encodePrettily());
-
-        String action = request.getString("action");
-        if ("add_ticker_data".equalsIgnoreCase(action)) {
-            addTickerData(request, message);
-        } else {
-            message.fail(400, "Unknown action: " + action);
+    private void handleGetCurrentPriceRequest(Message<JsonObject> message) {
+        String symbol = message.body().getString("symbol");
+        if (symbol == null || symbol.isEmpty()) {
+            message.fail(400, "Missing 'symbol' in request");
+            return;
         }
+
+        MarketPrice marketPriceRequest = new MarketPrice(twsRequestManager);
+        marketPriceRequest.fetchMarketPrice(symbol).thenRun(() -> {
+            JsonObject response = new JsonObject()
+                    .put("symbol", symbol)
+                    .put("current_price", marketPriceRequest.getCurrentPrice());
+            message.reply(response);
+        }).exceptionally(ex -> {
+            message.fail(500, "Failed to fetch current price: " + ex.getMessage());
+            return null;
+        });
     }
 
-    private void addTickerData(JsonObject request, Message<JsonObject> message) {
-        JsonArray tickers = request.getJsonArray("tickers");
-        JsonObject response = new JsonObject();
+    private void handleGetHistIVRequest(Message<JsonObject> message) {
+        String symbol = message.body().getString("symbol");
+        if (symbol == null || symbol.isEmpty()) {
+            message.fail(400, "Missing 'symbol' in request");
+            return;
+        }
 
-        CompletableFuture<?>[] futures = tickers.stream().map(tickerObj -> {
-            String symbol = (String) tickerObj;
-
-//            HistIV histIVRequest = new HistIV(twsRequestManager);
-//            MarketPrice marketPriceRequest = new MarketPrice(twsRequestManager);
-            OptionChains optionChains = new OptionChains(twsRequestManager);
-
-            CompletableFuture<Void> combinedFuture = CompletableFuture.allOf(
-//                    histIVRequest.fetchHistoricalIV(symbol),
-//                    marketPriceRequest.fetchMarketPrice(symbol)
-                    optionChains.fetchOptionChains(symbol)
-            ).thenAccept(v -> {
-                response.put(symbol, new JsonObject()
-//                        .put("current_price", marketPriceRequest.getCurrentPrice())
-//                        .put("iv_low", histIVRequest.getHistoricalLowIV())
-//                        .put("iv_high", histIVRequest.getHistoricalHighIV()));
-                        .put("optionchains", optionChains.fetchOptionChains(symbol)));
-                getLogger().info("Ticker data added: " + response.getJsonObject(symbol).encodePrettily());
-            });
-
-            return combinedFuture;
-        }).toArray(CompletableFuture[]::new);
-
-        CompletableFuture.allOf(futures).thenRun(() -> {
+        HistIV histIVRequest = new HistIV(twsRequestManager);
+        histIVRequest.fetchHistoricalIV(symbol).thenRun(() -> {
+            JsonObject response = new JsonObject()
+                    .put("symbol", symbol)
+                    .put("iv_low", histIVRequest.getHistoricalLowIV())
+                    .put("iv_high", histIVRequest.getHistoricalHighIV());
             message.reply(response);
-            getLogger().info("Replied with ticker data: " + response.encodePrettily());
         }).exceptionally(ex -> {
-            message.fail(500, "Failed to fetch ticker data: " + ex.getMessage());
-            getLogger().severe("Error fetching ticker data: " + ex.getMessage());
+            message.fail(500, "Failed to fetch historical IV: " + ex.getMessage());
             return null;
         });
     }

@@ -5,7 +5,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
-import org.optionsql.util.TestRequest;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,10 +18,11 @@ import java.util.*;
 public class MarketDataFetchService extends BaseService {
 
     private String marketDataApiUrl;
-    private String marketDataQuotesUrl;
-    private String marketDataEarningsUrl;
+     private String marketDataEarningsUrl;
     private String marketDataToken;
     private JsonObject tickerConfig;
+    private int fromDays;
+    private int toDays;
 
     public MarketDataFetchService(String serviceName) {
         super(serviceName);
@@ -34,20 +34,20 @@ public class MarketDataFetchService extends BaseService {
             super.start();
 
             // Load service-specific configuration
-            JsonObject fetchConfig = getServiceConfig();
-            JsonObject marketDataConfig = fetchConfig.getJsonObject("marketdata");
+            JsonObject serviceConfig = getServiceConfig();
+            JsonObject marketDataConfig = serviceConfig.getJsonObject("marketdata");
 
             marketDataApiUrl = marketDataConfig.getJsonObject("urls").getString("api");
-            marketDataQuotesUrl = marketDataConfig.getJsonObject("urls").getString("quotes");
             marketDataEarningsUrl = marketDataConfig.getJsonObject("urls").getString("earnings");
             marketDataToken = marketDataConfig.getString("token");
+            fromDays = serviceConfig.getInteger("fromdays");
+            toDays = serviceConfig.getInteger("todays");
 
             // Load ticker configuration from the specified file
-            String tickerFilePath = fetchConfig.getString("ticker");
+            String tickerFilePath = serviceConfig.getString("ticker");
             tickerConfig = loadTickerConfig(tickerFilePath);
 
             getLogger().info("MarketDataFetchService started and ready.");
-            TestRequest.sendTickerDataRequest(getVertx(), "config/ticker.json");
             processTickers();
         } catch (Exception e) {
             e.printStackTrace();
@@ -67,7 +67,7 @@ public class MarketDataFetchService extends BaseService {
         }
     }
 
-    private Future<Void> processTickers() {
+    private void processTickers() {
         getLogger().info("Processing tickers from configuration...");
         JsonArray allOptionChains = new JsonArray();
 
@@ -88,7 +88,7 @@ public class MarketDataFetchService extends BaseService {
         processNextTicker(tickerQueue, allOptionChains, processComplete);
 
         // Return the future to indicate completion
-        return processComplete.future()
+        processComplete.future()
                 .onSuccess(ignored -> {
                     try {
 
@@ -110,63 +110,62 @@ public class MarketDataFetchService extends BaseService {
     }
 
     private void processNextTicker(Queue<JsonObject> tickerQueue, JsonArray allOptionChains, Promise<Void> processComplete) {
-        // Check if the queue is empty
         if (tickerQueue.isEmpty()) {
-            processComplete.complete(); // All tickers processed
+            processComplete.complete();
             return;
         }
 
-        // Pop the next ticker from the queue
-        JsonObject tickerInfo = tickerQueue.poll();
+        JsonObject tickerInfo = tickerQueue.poll();  // Removes the ticker from the queue
         String ticker = tickerInfo.getString("ticker");
         String segment = tickerInfo.getString("segment");
 
         getLogger().info("Processing ticker: " + ticker);
 
-        // Process the ticker
         processSingleTicker(ticker, segment)
                 .onSuccess(tickerData -> {
                     if (tickerData != null) {
                         allOptionChains.add(tickerData);
                     }
-                    getLogger().info("Processed ticker: " + ticker);
-
-                    // Continue with the next ticker
+                    getLogger().info("Successfully processed ticker: " + ticker);
                     processNextTicker(tickerQueue, allOptionChains, processComplete);
                 })
                 .onFailure(err -> {
-                    getLogger().severe("Failed to process ticker: " + ticker + " - " + err.getMessage());
-
-                    // Continue with the next ticker even if this one failed
+                    getLogger().warning("Failed to process ticker: " + ticker + " | Reason: " + err.getMessage() + ". Retrying...");
+                    tickerQueue.add(tickerInfo);  // Re-add the ticker for retry
                     processNextTicker(tickerQueue, allOptionChains, processComplete);
                 });
     }
 
     private Future<JsonObject> processSingleTicker(String ticker, String segment) {
-        return fetchNextEarnings(ticker)
-                .compose(nextEarnings -> {
-                    // Check if earnings are unavailable
+        Promise<JsonObject> resultPromise = Promise.promise();
+        long startTime = System.currentTimeMillis();
+
+        fetchNextEarnings(ticker).compose(nextEarnings -> {
                     boolean hasEarnings = "ok".equals(nextEarnings.getString("s"));
 
-                    return fetchCurrentPrice(ticker)
-                            .compose(currentPrice -> fetchOptionChain(ticker)
-                                    .map(optionChainData -> {
-                                        // First, merge the option data
-                                        JsonArray mergedData = mergeOptionData(optionChainData);
+                    Future<Double> currentPriceFuture = requestCurrentPrice(ticker);
+                    Future<JsonObject> histIVFuture = requestHistoricalIV(ticker);
+                    Future<JsonObject> optionChainFuture = fetchOptionChain(ticker);
 
-                                        // Then, transform the merged data by grouping it by expiration
+                    return currentPriceFuture.compose(currentPrice ->
+                            histIVFuture.compose(histIV ->
+                                    optionChainFuture.map(optionChainData -> {
+                                        JsonArray mergedData = mergeOptionData(optionChainData);
                                         JsonObject optionsByExpiration = transformOptionChain(mergedData);
 
-                                        // Construct the final JSON structure for this ticker
+                                        long endTime = System.currentTimeMillis();
+                                        double durationSeconds = (endTime - startTime) / 1000.0;
+
+                                        getLogger().info("Ticker: " + ticker + " | Duration: " + durationSeconds + "s | Option Chains: " + mergedData.size());
+
                                         JsonObject result = new JsonObject()
                                                 .put("ticker_symbol", ticker)
                                                 .put("current_price", currentPrice)
                                                 .put("segment", segment)
-                                                .put("iv_historical_low", 0.0)
-                                                .put("iv_historical_high", 100.0)
+                                                .put("iv_historical_low", histIV.getDouble("iv_low", 0.0))
+                                                .put("iv_historical_high", histIV.getDouble("iv_high", 100.0))
                                                 .put("expirations", optionsByExpiration);
 
-                                        // Add earnings information conditionally
                                         if (hasEarnings) {
                                             result.put("next_earnings_date", convertUnixToDate(nextEarnings.getJsonArray("reportDate").getLong(0)))
                                                     .put("next_earnings_time", nextEarnings.getJsonArray("reportTime").getString(0));
@@ -174,11 +173,45 @@ public class MarketDataFetchService extends BaseService {
                                             result.put("next_earnings_date", "N/A")
                                                     .put("next_earnings_time", "N/A");
                                         }
-
                                         return result;
                                     })
-                            );
-                });
+                            )
+                    );
+                }).onSuccess(resultPromise::complete)
+                .onFailure(resultPromise::fail);
+
+        return resultPromise.future();
+    }
+
+    private Future<Double> requestCurrentPrice(String ticker) {
+        Promise<Double> promise = Promise.promise();
+        JsonObject request = new JsonObject().put("symbol", ticker);
+
+        getEventBus().request("broker.request.get_current_price", request, reply -> {
+            if (reply.succeeded()) {
+                JsonObject response = (JsonObject) reply.result().body();
+                promise.complete(response.getDouble("current_price"));
+            } else {
+                promise.fail("Failed to fetch current price for ticker: " + ticker);
+            }
+        });
+
+        return promise.future();
+    }
+
+    private Future<JsonObject> requestHistoricalIV(String ticker) {
+        Promise<JsonObject> promise = Promise.promise();
+        JsonObject request = new JsonObject().put("symbol", ticker);
+
+        getEventBus().request("broker.request.get_hist_iv", request, reply -> {
+            if (reply.succeeded()) {
+                promise.complete((JsonObject) reply.result().body());
+            } else {
+                promise.fail("Failed to fetch historical IV for ticker: " + ticker);
+            }
+        });
+
+        return promise.future();
     }
 
     private JsonObject transformOptionChain(JsonArray mergedData) {
@@ -223,18 +256,6 @@ public class MarketDataFetchService extends BaseService {
         return optionsByExpiration;
     }
 
-    private Future<Double> fetchCurrentPrice(String ticker) {
-        String url = marketDataQuotesUrl + ticker + "?token=" + marketDataToken;
-        return makeHttpRequest(url)
-                .compose(response -> {
-                    if ("ok".equals(response.getString("s"))) {
-                        return Future.succeededFuture(response.getJsonArray("mid").getDouble(0));
-                    } else {
-                        return Future.failedFuture("Failed to fetch current price for ticker: " + ticker);
-                    }
-                });
-    }
-
     private Future<JsonObject> fetchNextEarnings(String ticker) {
         String url = marketDataEarningsUrl + ticker + "?token=" + marketDataToken;
         return makeHttpRequest(url)
@@ -251,13 +272,13 @@ public class MarketDataFetchService extends BaseService {
 
     private Future<JsonObject> fetchOptionChain(String ticker) {
         String url = marketDataApiUrl + ticker + "?token=" + marketDataToken + "&from=" +
-                     getFutureDateISO8601(0) + "&to=" + getFutureDateISO8601(365);
+                     getFutureDateISO8601(fromDays) + "&to=" + getFutureDateISO8601(toDays);
         return makeHttpRequest(url)
                 .compose(response -> {
                     if ("ok".equals(response.getString("s"))) {
                         return Future.succeededFuture(response);
                     } else {
-                        return Future.failedFuture("Failed to fetch option chain for ticker: " + ticker);
+                        return Future.failedFuture("Failed to fetch option chain for ticker: " + ticker+", response: "+response.encodePrettily());
                     }
                 });
     }

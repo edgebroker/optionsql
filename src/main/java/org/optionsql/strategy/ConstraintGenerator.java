@@ -1,4 +1,4 @@
-package org.optionsql.signal;
+package org.optionsql.strategy;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;

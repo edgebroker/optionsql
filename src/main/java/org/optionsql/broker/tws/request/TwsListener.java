@@ -1,4 +1,4 @@
-package org.optionsql.broker.tws;
+package org.optionsql.broker.tws.request;
 
 import com.ib.client.Bar;
 import com.ib.client.Contract;
@@ -23,7 +23,7 @@ public interface TwsListener {
     void onPositionEnd();
 
     // --- Market Data Callbacks ---
-    void onTickPrice(int tickerId, int field, double price);
+    boolean onTickPrice(int tickerId, int field, double price);
     void onTickSize(int tickerId, int field, int size);  // Added for volume and OI
 
     // --- Account Update Callbacks ---
@@ -31,7 +31,7 @@ public interface TwsListener {
 
     // --- Option Chain Specific Callbacks ---
     void onOptionExpirations(List<String> expirations, List<Double> strikes);         // Expiration dates for a symbol
-    void onTickOptionComputation(
+    boolean onTickOptionComputation(
             int tickerId,
             double impliedVolatility,
             double delta,

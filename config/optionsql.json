@@ -1,10 +1,9 @@
 {
-  "serviceorder": ["tws", "analyze","store","fetch"],
+  "serviceorder": ["tws", "analyze", "store", "fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
       "port": 5432,
-      "database": "simulation",
       "user": "trading",
       "password": "trading"
     }
@@ -12,23 +11,27 @@
   "services": {
     "fetch": {
       "class": "org.optionsql.fetch.MarketDataFetchService",
-      "ticker": "config/ticker.json",
+      "ticker": "config/tickersingle.json",
       "marketdata": {
         "token": "eDBUNWZodzVpMEl3VkRRUGtIYU5wVlYxdUxVNU9Na1R0VW9ZTGdQRmlHRT0",
         "urls": {
           "api": "https://api.marketdata.app/v1/options/chain/",
-          "quotes": "https://api.marketdata.app/v1/stocks/quotes/",
           "earnings": "https://api.marketdata.app/v1/stocks/earnings/"
         }
-      }
+      },
+      "fromdays": 1,
+      "todays": 90
     },
     "store": {
       "class": "org.optionsql.store.StoreService",
       "listen": "fetch.complete",
-      "preprocess": ["sql/schema/option_analytics.sql", "sql/schema/option_chains.sql" ]
+      "database": "optionchains",
+      "preprocess": ["sql/schema/optionchains/option_analytics.sql", "sql/schema/optionchains/option_chains.sql" ],
+      "backupdir": "backups"
     },
     "analyze": {
       "class": "org.optionsql.analyze.AnalyzeService",
+      "database": "optionchains",
       "listen": "store.complete",
       "sqldir": "sql/analyze"
     },
@@ -39,29 +42,20 @@
       "clientid": 0,
       "listen": "broker.request"
     },
-    "csp_60": {
-      "class": "org.optionsql.signal.CspStrategy",
-      "listen": "analyze.complete",
-      "constrainsdir": "signal",
-      "sqldir": "sql/signal/csp"
-    },
-    "csp_45": {
-      "class": "org.optionsql.signal.CspStrategy",
-      "listen": "analyze.complete",
-      "constrainsdir": "signal",
-      "sqldir": "sql/signal/csp"
-    },
-    "csp_15": {
-      "class": "org.optionsql.signal.CspStrategy",
-      "listen": "analyze.complete",
-      "constrainsdir": "signal",
-      "sqldir": "sql/signal/csp"
-    },
-    "csp_7": {
-      "class": "org.optionsql.signal.CspStrategy",
-      "listen": "analyze.complete",
-      "constrainsdir": "signal",
-      "sqldir": "sql/signal/csp"
+    "csp_signal": {
+      "class": "org.optionsql.strategy.csp.SignalService",
+      "thresholds": {
+        "sentiments": ["Strong Bullish"],
+        "dte": 45,
+        "deltas": [-0.30, -0.15],
+        "ivrMin": 30.0,
+        "oiMin": 300,
+        "profitMin": 150,
+        "rorMin": 3.0,
+        "pcrMin": 0.0,
+        "pcrMax": 0.9,
+        "volumeToOiMin": 0.05
+      }
     }
   }
 }

@@ -6,17 +6,18 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.zip.GZIPInputStream;
 
 public class StoreService extends BaseService {
@@ -24,34 +25,35 @@ public class StoreService extends BaseService {
     private String jdbcUrl;
     private String jdbcUser;
     private String jdbcPassword;
+    private String hostname;
+    private int port;
+    private String database;
+    private String backupDir;
     private Connection dbConnection;
-    private MessageConsumer<JsonObject> dataConsumer; // To manage the event bus listener
+    private MessageConsumer<JsonObject> dataConsumer;
 
     public StoreService(String serviceName) {
         super(serviceName);
     }
 
     private void startListening() {
-        // Subscribe to the event bus address
         String dataAddress = getServiceConfig().getString("listen");
         dataConsumer = getEventBus().consumer(dataAddress, message -> {
             JsonObject jsonData = message.body();
             openDatabaseConnection()
-                    .andThen(h ->
-                            preprocessSqlFiles()
-                                    .andThen(t ->
-                                            storeData(jsonData)
-                                                    .onSuccess(v -> {
-                                                        closeDatabaseConnection();
-                                                        sendCompleteToEventBus(true, "");
-                                                        getLogger().info("Data successfully stored.");
-                                                    })
-                                                    .onFailure(err ->
-                                                    {
-                                                        closeDatabaseConnection();
-                                                        sendCompleteToEventBus(false, err.getMessage());
-                                                        getLogger().severe("Failed to store data: " + err.getMessage());
-                                                    })));
+                    .compose(v -> backupDatabase())
+                    .compose(v -> preprocessSqlFiles())
+                    .compose(v -> storeData(jsonData))
+                    .onSuccess(v -> {
+                        closeDatabaseConnection();
+                        sendCompleteToEventBus(true, "");
+                        getLogger().info("Data successfully stored.");
+                    })
+                    .onFailure(err -> {
+                        closeDatabaseConnection();
+                        sendCompleteToEventBus(false, err.getMessage());
+                        getLogger().severe("Failed to store data: " + err.getMessage());
+                    });
         });
 
         dataConsumer.completionHandler(res -> {
@@ -85,6 +87,38 @@ public class StoreService extends BaseService {
                 getLogger().severe("Failed to close database connection: " + e.getMessage());
             }
         }
+    }
+    private Future<Void> backupDatabase() {
+        return vertx.executeBlocking(promise -> {
+            try {
+                String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String backupFile = backupDir + "/backup_" + timestamp + ".sql.gz";
+
+                Path backupDirPath = Paths.get(backupDir);
+                if (!Files.exists(backupDirPath)) {
+                    Files.createDirectories(backupDirPath);
+                }
+
+                String command = String.format(
+                        "pg_dump -h %s -p %d -U %s %s | gzip > %s",
+                        hostname, port, jdbcUser, database, backupFile);
+
+                ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
+                processBuilder.environment().put("PGPASSWORD", jdbcPassword);
+                Process process = processBuilder.start();
+                int exitCode = process.waitFor();
+
+                if (exitCode == 0) {
+                    getLogger().info("Database backup and compression completed successfully: " + backupFile);
+                    promise.complete();
+                } else {
+                    throw new IOException("Database backup failed with exit code: " + exitCode);
+                }
+            } catch (Exception e) {
+                getLogger().log(Level.SEVERE, "Failed to backup and compress database.", e);
+                promise.fail(e);
+            }
+        });
     }
 
     private Future<Void> preprocessSqlFiles() {
@@ -207,12 +241,15 @@ public class StoreService extends BaseService {
     @Override
     public void start() throws Exception {
         super.start();
-
-        // Load database configuration
         JsonObject resourcesConfig = getGlobalConfig().getJsonObject("resources").getJsonObject("postgres");
-        jdbcUrl = "jdbc:postgresql://" + resourcesConfig.getString("hostname") + ":" + resourcesConfig.getInteger("port") + "/" + resourcesConfig.getString("database");
+        JsonObject serviceConfig = getServiceConfig();
+        hostname = resourcesConfig.getString("hostname");
+        port = resourcesConfig.getInteger("port");
+        database = serviceConfig.getString("database");
+        jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + database;
         jdbcUser = resourcesConfig.getString("user");
         jdbcPassword = resourcesConfig.getString("password");
+        backupDir = serviceConfig.getString("backupdir");
         startListening();
         getLogger().info("StoreService started");
     }

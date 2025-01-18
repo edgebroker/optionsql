@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS optionchains
     call_bid                  NUMERIC(10, 2),                      -- Bid price (Call)
     call_ask                  NUMERIC(10, 2),                      -- Ask price (Call)
     call_mid                  NUMERIC(10, 2),                      -- Mid price (Call)
+    call_spread               NUMERIC(10, 4) GENERATED ALWAYS AS (
+        GREATEST(0, COALESCE(call_ask, 0) - COALESCE(call_bid, 0))
+        ) STORED,
     call_volume               INT,                                 -- Volume (Call)
     call_oi                   INT,                                 -- Open interest (Call)
     call_delta                NUMERIC(10, 4),                      -- Delta (Call)
@@ -101,6 +104,9 @@ CREATE TABLE IF NOT EXISTS optionchains
     put_bid                   NUMERIC(10, 2),                      -- Bid price (Put)
     put_ask                   NUMERIC(10, 2),                      -- Ask price (Put)
     put_mid                   NUMERIC(10, 2),                      -- Mid price (Put)
+    put_spread                NUMERIC(10, 4) GENERATED ALWAYS AS (
+        GREATEST(0, COALESCE(put_ask, 0) - COALESCE(put_bid, 0))
+        ) STORED,
     put_volume                INT,                                 -- Volume (Put)
     put_oi                    INT,                                 -- Open interest (Put)
     put_delta                 NUMERIC(10, 4),                      -- Delta (Put)

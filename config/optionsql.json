@@ -1,5 +1,5 @@
 {
-  "serviceorder": ["tws", "analyze","store","fetch"],
+  "serviceorder": ["csp_signal"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
@@ -11,7 +11,7 @@
   "services": {
     "fetch": {
       "class": "org.optionsql.fetch.MarketDataFetchService",
-      "ticker": "config/tickersingle.json",
+      "ticker": "config/ticker.json",
       "marketdata": {
         "token": "eDBUNWZodzVpMEl3VkRRUGtIYU5wVlYxdUxVNU9Na1R0VW9ZTGdQRmlHRT0",
         "urls": {

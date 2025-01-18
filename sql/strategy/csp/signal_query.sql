@@ -56,6 +56,7 @@ WITH filtered_options AS (
       AND oc.put_gex >= 0                    -- Stable gamma exposure
       AND oc.skew BETWEEN -0.05 AND 0.05     -- Controlled IV skew
       AND oc.skew_delta BETWEEN -0.10 AND 0.10 -- Balanced delta skew
+      AND oc.put_elasticity BETWEEN -0.25 AND 0.50  -- Balanced price sensitivity
       AND oc.put_ror >= 2.5
       AND oc.put_bpr <= 25000
 )

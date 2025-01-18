@@ -173,18 +173,19 @@ public class StoreService extends BaseService {
 
     private void storeOptionChains(JsonArray options) throws SQLException {
         String query = "INSERT INTO optionchains (" +
-                       "ticker_symbol, expiration_date, strike_price, call_bid, call_ask, call_mid, call_volume, call_oi, call_delta, call_gamma, call_theta, call_vega, call_iv, " +
+                       "ticker_symbol, expiration_date, strike_price, underlying_price, " +  // Added underlying_price
+                       "call_bid, call_ask, call_mid, call_volume, call_oi, call_delta, call_gamma, call_theta, call_vega, call_iv, " +
                        "put_bid, put_ask, put_mid, put_volume, put_oi, put_delta, put_gamma, put_theta, put_vega, put_iv" +
-                       ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+                       ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +  // Now 24 placeholders
                        " ON CONFLICT (ticker_symbol, expiration_date, strike_price) DO NOTHING";
 
         try (PreparedStatement stmt = dbConnection.prepareStatement(query)) {
             for (int i = 0; i < options.size(); i++) {
                 JsonObject tickerData = options.getJsonObject(i);
                 String tickerSymbol = tickerData.getString("ticker_symbol");
+                double currentPrice = tickerData.getDouble("current_price");
                 JsonObject expirations = tickerData.getJsonObject("expirations");
 
-                // Iterate over each expiration and its strikes
                 for (String expiration : expirations.fieldNames()) {
                     JsonArray strikes = expirations.getJsonArray(expiration);
 
@@ -194,30 +195,31 @@ public class StoreService extends BaseService {
                         stmt.setString(1, tickerSymbol);
                         stmt.setString(2, expiration);
                         stmt.setDouble(3, strikeData.getDouble("strike_price", 0.0));
+                        stmt.setDouble(4, currentPrice);  // Added underlying_price
 
                         // Set call option fields
-                        stmt.setDouble(4, strikeData.getDouble("call_bid", 0.0));
-                        stmt.setDouble(5, strikeData.getDouble("call_ask", 0.0));
-                        stmt.setDouble(6, strikeData.getDouble("call_mid", 0.0));
-                        stmt.setInt(7, strikeData.getInteger("call_volume", 0));
-                        stmt.setInt(8, strikeData.getInteger("call_oi", 0));
-                        stmt.setDouble(9, strikeData.getDouble("call_delta", 0.0));
-                        stmt.setDouble(10, strikeData.getDouble("call_gamma", 0.0));
-                        stmt.setDouble(11, strikeData.getDouble("call_theta", 0.0));
-                        stmt.setDouble(12, strikeData.getDouble("call_vega", 0.0));
-                        stmt.setDouble(13, strikeData.getDouble("call_iv", 0.0));
+                        stmt.setDouble(5, strikeData.getDouble("call_bid", 0.0));
+                        stmt.setDouble(6, strikeData.getDouble("call_ask", 0.0));
+                        stmt.setDouble(7, strikeData.getDouble("call_mid", 0.0));
+                        stmt.setInt(8, strikeData.getInteger("call_volume", 0));
+                        stmt.setInt(9, strikeData.getInteger("call_oi", 0));
+                        stmt.setDouble(10, strikeData.getDouble("call_delta", 0.0));
+                        stmt.setDouble(11, strikeData.getDouble("call_gamma", 0.0));
+                        stmt.setDouble(12, strikeData.getDouble("call_theta", 0.0));
+                        stmt.setDouble(13, strikeData.getDouble("call_vega", 0.0));
+                        stmt.setDouble(14, strikeData.getDouble("call_iv", 0.0));
 
                         // Set put option fields
-                        stmt.setDouble(14, strikeData.getDouble("put_bid", 0.0));
-                        stmt.setDouble(15, strikeData.getDouble("put_ask", 0.0));
-                        stmt.setDouble(16, strikeData.getDouble("put_mid", 0.0));
-                        stmt.setInt(17, strikeData.getInteger("put_volume", 0));
-                        stmt.setInt(18, strikeData.getInteger("put_oi", 0));
-                        stmt.setDouble(19, strikeData.getDouble("put_delta", 0.0));
-                        stmt.setDouble(20, strikeData.getDouble("put_gamma", 0.0));
-                        stmt.setDouble(21, strikeData.getDouble("put_theta", 0.0));
-                        stmt.setDouble(22, strikeData.getDouble("put_vega", 0.0));
-                        stmt.setDouble(23, strikeData.getDouble("put_iv", 0.0));
+                        stmt.setDouble(15, strikeData.getDouble("put_bid", 0.0));
+                        stmt.setDouble(16, strikeData.getDouble("put_ask", 0.0));
+                        stmt.setDouble(17, strikeData.getDouble("put_mid", 0.0));
+                        stmt.setInt(18, strikeData.getInteger("put_volume", 0));
+                        stmt.setInt(19, strikeData.getInteger("put_oi", 0));
+                        stmt.setDouble(20, strikeData.getDouble("put_delta", 0.0));
+                        stmt.setDouble(21, strikeData.getDouble("put_gamma", 0.0));
+                        stmt.setDouble(22, strikeData.getDouble("put_theta", 0.0));
+                        stmt.setDouble(23, strikeData.getDouble("put_vega", 0.0));
+                        stmt.setDouble(24, strikeData.getDouble("put_iv", 0.0));  // Corrected index
 
                         stmt.addBatch();
                     }

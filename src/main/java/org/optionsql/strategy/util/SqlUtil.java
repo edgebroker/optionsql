@@ -11,7 +11,7 @@ public class SqlUtil {
         String closestExpiration = null;
         String query = "SELECT expiration_date FROM ticker_expirations " +
                        "WHERE ticker_symbol = ? " +
-                       "ORDER BY ABS(DATE_PART('day', expiration_date - CURRENT_DATE) - ?) LIMIT 1";
+                       "ORDER BY ABS(days_to_expiration - ?) LIMIT 1";
 
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, ticker);

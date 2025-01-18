@@ -5,12 +5,12 @@ WITH option_metrics AS (
         strike_price,
 
         -- Time to Expiration (TTE) in years
-        (expiration_date::DATE - CURRENT_DATE)::NUMERIC / 365 AS time_to_expiration
+        (expiration_date::DATE - CURRENT_DATE)::NUMERIC / 365 AS tte
     FROM
         optionchains
 )
 UPDATE optionchains AS o
-SET time_to_expiration = om.time_to_expiration
+SET tte = om.tte
 FROM option_metrics AS om
 WHERE o.ticker_symbol = om.ticker_symbol
   AND o.expiration_date = om.expiration_date

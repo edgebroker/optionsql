@@ -1,5 +1,5 @@
 {
-  "serviceorder": ["tws", "analyze", "store", "fetch"],
+  "serviceorder": ["tws", "analyze","store","fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
@@ -44,18 +44,19 @@
     },
     "csp_signal": {
       "class": "org.optionsql.strategy.csp.SignalService",
-      "thresholds": {
-        "sentiments": ["Strong Bullish"],
-        "dte": 45,
-        "deltas": [-0.30, -0.15],
-        "ivrMin": 30.0,
-        "oiMin": 300,
-        "profitMin": 150,
-        "rorMin": 3.0,
-        "pcrMin": 0.0,
-        "pcrMax": 0.9,
-        "volumeToOiMin": 0.05
-      }
+      "databases": {
+        "options": "optionchains",
+        "strategy": "strategy_csp"
+      },
+      "sql": {
+        "signal": "sql/strategy/csp/signal_query.sql",
+        "filter": [
+          "sql/strategy/csp/filter_key_levels.sql",
+          "sql/strategy/csp/filter_zero_gamma.sql",
+          "sql/strategy/csp/filter_flip_gamma.sql"
+        ]
+      },
+      "listen": "analyze.complete"
     }
   }
 }

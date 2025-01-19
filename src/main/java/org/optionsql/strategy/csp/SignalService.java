@@ -1,17 +1,12 @@
 package org.optionsql.strategy.csp;
 
-import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class SignalService extends BaseService {
 
@@ -42,8 +37,8 @@ public class SignalService extends BaseService {
         getLogger().info("Connected to Strategy database: " + strategyDbName);
 
         // Start listening for events
-       startListening();
- //       generateSignals();
+        //      startListening();
+        generateSignals();
     }
 
     private Connection createDatabaseConnection(JsonObject dbConfig, String dbName) throws SQLException {
@@ -107,6 +102,8 @@ public class SignalService extends BaseService {
             String findStrikesQuery = loadQuery(sqlConfig.getJsonObject("find").getString("strikes"));
             JsonObject filterQueries = loadFilterQueries();
 
+            JsonArray signals = new JsonArray();
+
             ResultSet tickerResultSet = optionsDbConnection.createStatement().executeQuery(findTickerQuery);
             while (tickerResultSet.next()) {
                 String ticker = tickerResultSet.getString("ticker_symbol");
@@ -127,6 +124,9 @@ public class SignalService extends BaseService {
                     continue;
                 }
                 String expirationDate = expirationResultSet.getString("expiration_date");
+                expirationStmt.close();
+                expirationResultSet.close();
+
                 logPrefix = ticker + " | " + expirationDate;
                 // Apply expiration-level filters
                 if (!applyFilters(logPrefix, filterQueries.getJsonArray("expiration"), ticker, expirationDate)) {
@@ -148,10 +148,20 @@ public class SignalService extends BaseService {
                     if (!applyFilters(logPrefix, filterQueries.getJsonArray("strike"), ticker, expirationDate, strikePrice)) {
                         continue;
                     }
+                    signals.add(new JsonObject()
+                            .put("strategy", "put")
+                            .put("direction", "short")
+                            .put("ticker_symbol", ticker)
+                            .put("expiration_date", expirationDate)
+                            .put("strike_price", strikePrice));
                 }
-
                 strikesStmt.close();
+                strikesResultSet.close();
             }
+            if (signals.isEmpty())
+                getLogger().info("No valid signals found");
+            else
+                getLogger().info("Signals found: " + signals.encodePrettily());
 
             tickerResultSet.close();
         } catch (Exception e) {
@@ -177,22 +187,43 @@ public class SignalService extends BaseService {
 
                 ResultSet resultSet = stmt.executeQuery();
                 boolean passed = resultSet.next() && resultSet.getBoolean(1);
-
+                String valueLine = "";
+                if (hasColumn(resultSet, "option")) {
+                    valueLine = ", option: " + resultSet.getString(2);
+                    valueLine += " threshold: " + resultSet.getString(3);
+                }
                 if (passed) {
-                    getLogger().info(logPrefix+": ✅ Filter passed: " + filename);
+                    getLogger().info(logPrefix + ": ✅ Filter passed" + valueLine + ", file: " + filename);
                 } else {
-                    getLogger().warning(logPrefix+": ❌ Filter failed: " + filename);
+                    getLogger().warning(logPrefix + ": ❌ Filter failed" + valueLine + ", file: " + filename);
                     return false; // Stop processing on first failed filter
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                getLogger().severe(logPrefix+": ❌ Error applying filter: " + filename + " | Error: " + e.getMessage());
+                getLogger().severe(logPrefix + ": ❌ Error applying filter: " + filename + " | Error: " + e.getMessage());
                 return false; // Treat any exception as a failed filter
             }
         }
         return true; // All filters passed
     }
-    
+
+    public boolean hasColumn(ResultSet resultSet, String columnName) {
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            for (int i = 1; i <= columnCount; i++) {
+                if (metaData.getColumnName(i).equalsIgnoreCase(columnName)) {
+                    return true; // Column found
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false; // Column not found
+    }
+
     @Override
     public void stop() throws Exception {
         super.stop();

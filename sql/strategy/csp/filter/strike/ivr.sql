@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_ivr >= at.high_ivr THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+     oc.put_ivr as option,
+     '>= '||at.high_ivr as threshold
 FROM
     optionchains oc
         JOIN

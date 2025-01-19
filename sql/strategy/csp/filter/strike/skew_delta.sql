@@ -1,8 +1,10 @@
 SELECT
     CASE
-        WHEN oc.skew_delta BETWEEN -0.10 AND at.balanced_skew_delta THEN true
+        WHEN oc.skew_delta BETWEEN at.min_skew_delta AND at.max_skew_delta THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.skew_delta as option,
+    at.min_skew_delta||' to '||at.max_skew_delta as threshold
 FROM
     optionchains oc
         JOIN

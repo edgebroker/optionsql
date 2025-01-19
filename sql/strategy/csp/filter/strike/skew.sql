@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.skew <= at.controlled_skew THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.skew as option,
+    '<= '||at.controlled_skew as threshold
 FROM
     optionchains oc
         JOIN

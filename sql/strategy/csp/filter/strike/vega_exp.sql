@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_vega_exp BETWEEN -1000 AND at.high_vega_exp THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_vega_exp as option,
+    '-1000 (static) to '||at.high_vega_exp as threshold
 FROM
     optionchains oc
         JOIN

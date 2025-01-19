@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_spread <= at.tight_spread THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_spread as option,
+    '<= '||at.tight_spread as threshold
 FROM
     optionchains oc
         JOIN

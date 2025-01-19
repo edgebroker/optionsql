@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_dvr BETWEEN (at.balanced_dvr - 0.05) AND (at.balanced_dvr + 0.05) THEN true
         ELSE false
-        END AS passed
+        END AS passed ,
+    oc.put_dvr as option,
+    (at.balanced_dvr - 0.05) ||' to '|| (at.balanced_dvr + 0.05) as threshold
 FROM
     optionchains oc
         JOIN

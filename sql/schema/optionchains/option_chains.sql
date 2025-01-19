@@ -197,25 +197,51 @@ CREATE TABLE IF NOT EXISTS optionchains
 );
 
 
-CREATE VIEW adaptive_thresholds AS
+CREATE OR REPLACE VIEW adaptive_thresholds AS
 SELECT
     oc.ticker_symbol,
     oc.expiration_date,
+    -- Median Open Interest (OI)
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_oi) AS median_oi,
+    -- Tight Spread (25th percentile)
     PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oc.put_spread) AS tight_spread,
+    -- High Return on Risk (ROR, 75th percentile)
     PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oc.put_ror) AS high_ror,
+    -- Average Buying Power Reduction (BPR)
     AVG(oc.put_bpr) AS avg_bpr,
+    -- High Implied Volatility Rank (IVR, 60th percentile)
     PERCENTILE_CONT(0.6) WITHIN GROUP (ORDER BY oc.put_ivr) AS high_ivr,
+    -- Average Gamma Exposure (GEX)
     AVG(oc.put_gex) AS avg_gex,
+    -- Average Delta Exposure (DEX)
     AVG(oc.put_dex) AS avg_dex,
+    -- Minimum Put/Call Ratio (PCR, 10th percentile)
+    PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY oc.pcr) AS min_pcr,
+    -- Average Put/Call Ratio (PCR)
     AVG(
-            CASE WHEN oc.call_oi + oc.put_oi > 0 THEN oc.put_oi::NUMERIC / NULLIF(oc.call_oi, 0) ELSE NULL END
+            CASE
+                WHEN oc.call_oi + oc.put_oi > 0 THEN oc.put_oi::NUMERIC / NULLIF(oc.call_oi, 0)
+                ELSE NULL
+                END
     ) AS avg_pcr,
+    -- Controlled Skew (Median)
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.skew) AS controlled_skew,
+    -- Balanced Skew Delta (Median)
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.skew_delta) AS balanced_skew_delta,
+    -- Minimal Theta Decay (25th percentile)
     PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oc.put_theta_decay_exp) AS minimal_theta_decay,
+    -- High Vega Exposure (75th percentile)
     PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oc.put_vega_exp) AS high_vega_exp,
+    -- Balanced Elasticity (Median)
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_elasticity) AS balanced_elasticity,
-    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_dvr) AS balanced_dvr
+    -- Balanced Delta/Vega Ratio (Median)
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_dvr) AS balanced_dvr,
+    -- Median Put Volume (Median)
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_volume) AS median_volume,
+    -- Median Open Interest/Volume Ratio (OVR)
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_ovr) AS median_ovr,
+    -- Min and Max Skew Delta for further boundary checks
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oc.skew_delta) AS min_skew_delta,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oc.skew_delta) AS max_skew_delta
 FROM optionchains oc
 GROUP BY oc.ticker_symbol, oc.expiration_date;

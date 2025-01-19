@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.tte BETWEEN 30 AND 60 THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.tte as option,
+    '30 (static) to 60 (static)' as threshold
 FROM
     optionchains oc
 WHERE

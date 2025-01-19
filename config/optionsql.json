@@ -1,5 +1,5 @@
 {
-  "serviceorder": ["tws", "csp_signal", "analyze", "store", "fetch"],
+  "serviceorder": ["csp_signal"],
   "resources": {
     "postgres": {
       "hostname": "localhost",

@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_ror >= 3.0 THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_ror as option,
+    '>= (static)'||3.0 as threshold
 FROM
     optionchains oc
 WHERE

@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_bpr <= at.avg_bpr THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_bpr as option,
+    '<= '||at.avg_bpr as threshold
 FROM
     optionchains oc
         JOIN

@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_theta_decay_exp <= at.minimal_theta_decay THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_theta_decay_exp as option,
+    '<= '||at.minimal_theta_decay as threshold
 FROM
     optionchains oc
         JOIN

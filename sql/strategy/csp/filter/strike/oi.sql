@@ -2,7 +2,9 @@ SELECT
     CASE
         WHEN oc.put_oi >= at.median_oi THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    oc.put_oi as option,
+    '>= '||at.median_oi as threshold
 FROM
     optionchains oc
         JOIN

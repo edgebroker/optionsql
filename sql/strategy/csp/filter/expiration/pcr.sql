@@ -1,8 +1,10 @@
 SELECT
     CASE
-        WHEN ste.put_call_ratio BETWEEN 0.2 AND at.avg_pcr THEN true
+        WHEN ste.put_call_ratio BETWEEN at.min_pcr AND at.avg_pcr THEN true
         ELSE false
-        END AS passed
+        END AS passed,
+    ste.put_call_ratio as option,
+    at.min_pcr||' to '||at.avg_bpr as threshold
 FROM
     sentiment_ticker_expiration ste
         JOIN

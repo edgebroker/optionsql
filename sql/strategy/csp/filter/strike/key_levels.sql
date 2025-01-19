@@ -10,7 +10,9 @@ SELECT
     CASE
         WHEN COUNT(*) > 0 THEN TRUE  -- Key level exists between price and strike
         ELSE FALSE                   -- No support between price and strike
-        END AS passed
+        END AS passed,
+    COUNT(*) as option,
+    '> '||0 as threshold
 FROM key_levels kl
          JOIN selected_option so
               ON kl.ticker_symbol = so.ticker_symbol

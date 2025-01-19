@@ -1,5 +1,5 @@
 {
-  "serviceorder": ["csp_signal"],
+  "serviceorder": ["tws", "csp_signal", "analyze", "store", "fetch"],
   "resources": {
     "postgres": {
       "hostname": "localhost",
@@ -49,12 +49,41 @@
         "strategy": "strategy_csp"
       },
       "sql": {
-        "signal": "sql/strategy/csp/signal_query.sql",
-        "filter": [
-          "sql/strategy/csp/filter_key_levels.sql",
-          "sql/strategy/csp/filter_zero_gamma.sql",
-          "sql/strategy/csp/filter_flip_gamma.sql"
-        ]
+        "find": {
+          "ticker": "sql/strategy/csp/find/ticker.sql",
+          "expiration": "sql/strategy/csp/find/expiration.sql",
+          "strikes": "sql/strategy/csp/find/strikes.sql"
+        },
+        "filter": {
+          "ticker": [
+            "sql/strategy/csp/filter/ticker/earnings.sql"
+          ],
+          "expiration": [
+            "sql/strategy/csp/filter/expiration/sentiment.sql",
+            "sql/strategy/csp/filter/expiration/pcr.sql"
+          ],
+          "strike": [
+            "sql/strategy/csp/filter/strike/key_levels.sql",
+            "sql/strategy/csp/filter/strike/zero_gamma.sql",
+            "sql/strategy/csp/filter/strike/flip_gamma.sql",
+            "sql/strategy/csp/filter/strike/ivr.sql",
+            "sql/strategy/csp/filter/strike/ovr.sql",
+            "sql/strategy/csp/filter/strike/dvr.sql",
+            "sql/strategy/csp/filter/strike/oi.sql",
+            "sql/strategy/csp/filter/strike/volume.sql",
+            "sql/strategy/csp/filter/strike/spread.sql",
+            "sql/strategy/csp/filter/strike/gex.sql",
+            "sql/strategy/csp/filter/strike/skew.sql",
+            "sql/strategy/csp/filter/strike/skew_delta.sql",
+            "sql/strategy/csp/filter/strike/elasticity.sql",
+            "sql/strategy/csp/filter/strike/vega_exp.sql",
+            "sql/strategy/csp/filter/strike/theta_decay_exp.sql",
+            "sql/strategy/csp/filter/strike/tte.sql",
+            "sql/strategy/csp/filter/strike/vtr.sql",
+            "sql/strategy/csp/filter/strike/ror.sql",
+            "sql/strategy/csp/filter/strike/bpr.sql"
+          ]
+        }
       },
       "listen": "analyze.complete"
     }

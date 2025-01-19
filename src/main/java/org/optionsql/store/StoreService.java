@@ -41,7 +41,7 @@ public class StoreService extends BaseService {
         dataConsumer = getEventBus().consumer(dataAddress, message -> {
             JsonObject jsonData = message.body();
             openDatabaseConnection()
-                    .compose(v -> backupDatabase())
+//                    .compose(v -> backupDatabase())
                     .compose(v -> preprocessSqlFiles())
                     .compose(v -> storeData(jsonData))
                     .onSuccess(v -> {

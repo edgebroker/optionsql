@@ -12,7 +12,7 @@ WITH filtered_options AS (
         oc.put_bid AS bid,
         oc.put_ask AS ask,
         oc.put_mid AS mid,
-        oc.put_spread AS spread,              -- Use put_spread directly
+        oc.put_spread AS spread,
         oc.put_volume AS volume,
         oc.put_oi AS oi,
         oc.put_delta AS delta,
@@ -35,30 +35,28 @@ WITH filtered_options AS (
         oc.tte
     FROM optionchains oc
              LEFT JOIN ticker t ON oc.ticker_symbol = t.ticker_symbol
-             LEFT JOIN sentiment_ticker_expiration ste
-                       ON oc.ticker_symbol = ste.ticker_symbol
-                           AND oc.expiration_date = ste.expiration_date
+             LEFT JOIN sentiment_ticker_expiration ste ON oc.ticker_symbol = ste.ticker_symbol AND oc.expiration_date = ste.expiration_date
+             LEFT JOIN adaptive_thresholds at ON oc.ticker_symbol = at.ticker_symbol AND oc.expiration_date = at.expiration_date
     WHERE oc.ticker_symbol = ?
       AND oc.expiration_date = ?
-      AND ste.sentiment = 'Strong Bullish'
-      AND oc.put_delta BETWEEN -0.25 AND -0.10
-      AND oc.put_ivr >= 40.0
-      AND ste.put_call_ratio BETWEEN 0.2 AND 0.8
+      AND oc.strike_price = ?
+      AND oc.put_ivr >= at.high_ivr
+      AND ste.put_call_ratio BETWEEN 0.2 AND at.avg_pcr
       AND oc.put_ovr >= 0.05
-      AND oc.put_oi >= 300                    -- Solid liquidity
-      AND oc.put_volume >= 100               -- Active contract
-      AND (
-        (oc.put_oi >= 1000 AND oc.put_spread <= 0.10)  -- High OI → Tight spread
-            OR (oc.put_oi BETWEEN 500 AND 999 AND oc.put_spread <= 0.20)  -- Medium OI → Moderate spread
-            OR (oc.put_oi < 500 AND oc.put_spread <= 0.30)  -- Low OI → Wider spread
-        )
-      AND oc.put_dvr BETWEEN -1.0 AND 1.0    -- Balanced delta/vega
-      AND oc.put_gex >= 0                    -- Stable gamma exposure
-      AND oc.skew BETWEEN -0.05 AND 0.05     -- Controlled IV skew
-      AND oc.skew_delta BETWEEN -0.10 AND 0.10 -- Balanced delta skew
-      AND oc.put_elasticity BETWEEN -0.25 AND 0.50  -- Balanced price sensitivity
-      AND oc.put_ror >= 2.5
-      AND oc.put_bpr <= 25000
+      AND oc.put_oi >= at.median_oi
+      AND oc.put_volume >= 100
+      AND oc.put_spread <= at.tight_spread
+      AND oc.put_dvr BETWEEN (at.balanced_dvr - 0.05) AND (at.balanced_dvr + 0.05)
+      AND oc.put_gex >= 0
+      AND oc.skew <= at.controlled_skew
+      AND oc.skew_delta BETWEEN -0.10 AND at.balanced_skew_delta
+      AND oc.put_elasticity BETWEEN -0.25 AND at.balanced_elasticity
+      AND oc.put_vega_exp BETWEEN -1000 AND at.high_vega_exp
+      AND oc.put_theta_decay_exp <= at.minimal_theta_decay
+      AND oc.put_ror >= 3.0
+      AND oc.put_bpr <= at.avg_bpr
+      AND oc.tte BETWEEN 30 AND 60
+      AND (oc.put_vega_exp / NULLIF(ABS(oc.put_theta_decay_exp), 0)) <= 10
 )
 SELECT COALESCE(
                json_agg(json_build_object(
@@ -74,7 +72,7 @@ SELECT COALESCE(
                        'bid', bid,
                        'ask', ask,
                        'mid', mid,
-                       'spread', spread,    -- Included put_spread in JSON
+                       'spread', spread,
                        'volume', volume,
                        'oi', oi,
                        'delta', delta,

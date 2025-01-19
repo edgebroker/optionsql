@@ -1,4 +1,5 @@
 -- Drop existing tables if they exist
+DROP VIEW IF EXISTS adaptive_thresholds;
 DROP TABLE IF EXISTS optionchains;
 DROP TABLE IF EXISTS ticker;
 
@@ -175,6 +176,12 @@ CREATE TABLE IF NOT EXISTS optionchains
         ) STORED,                                                  -- Notional Value (Put)
 
 -- Shared Metrics
+    pcr NUMERIC(10, 4) GENERATED ALWAYS AS (                       -- Put/Call Ratio
+        CASE
+            WHEN (call_oi + put_oi) > 0 THEN put_oi::NUMERIC / NULLIF(call_oi + put_oi, 0)
+            ELSE 0
+            END
+        ) STORED,
     implied_move             NUMERIC(10, 4) GENERATED ALWAYS AS (
         underlying_price * put_iv * 0.025
         ) STORED,                                                  -- Implied move
@@ -188,3 +195,27 @@ CREATE TABLE IF NOT EXISTS optionchains
 
     PRIMARY KEY (ticker_symbol, expiration_date, strike_price)
 );
+
+
+CREATE VIEW adaptive_thresholds AS
+SELECT
+    oc.ticker_symbol,
+    oc.expiration_date,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_oi) AS median_oi,
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oc.put_spread) AS tight_spread,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oc.put_ror) AS high_ror,
+    AVG(oc.put_bpr) AS avg_bpr,
+    PERCENTILE_CONT(0.6) WITHIN GROUP (ORDER BY oc.put_ivr) AS high_ivr,
+    AVG(oc.put_gex) AS avg_gex,
+    AVG(oc.put_dex) AS avg_dex,
+    AVG(
+            CASE WHEN oc.call_oi + oc.put_oi > 0 THEN oc.put_oi::NUMERIC / NULLIF(oc.call_oi, 0) ELSE NULL END
+    ) AS avg_pcr,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.skew) AS controlled_skew,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.skew_delta) AS balanced_skew_delta,
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oc.put_theta_decay_exp) AS minimal_theta_decay,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oc.put_vega_exp) AS high_vega_exp,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_elasticity) AS balanced_elasticity,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oc.put_dvr) AS balanced_dvr
+FROM optionchains oc
+GROUP BY oc.ticker_symbol, oc.expiration_date;

@@ -4,7 +4,6 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.optionsql.base.BaseService;
-import org.optionsql.strategy.util.SqlUtil;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -18,8 +17,6 @@ public class SignalService extends BaseService {
 
     private Connection optionsDbConnection;
     private Connection strategyDbConnection;
-    private String signalQuery;
-    private String[] filterQueries;
 
     public SignalService(String serviceName) {
         super(serviceName);
@@ -45,8 +42,8 @@ public class SignalService extends BaseService {
         getLogger().info("Connected to Strategy database: " + strategyDbName);
 
         // Start listening for events
-//        startListening();
-        generateSignals();
+       startListening();
+ //       generateSignals();
     }
 
     private Connection createDatabaseConnection(JsonObject dbConfig, String dbName) throws SQLException {
@@ -66,98 +63,136 @@ public class SignalService extends BaseService {
     }
 
 
-    private void loadSignalQuery() throws Exception {
-        String queryFilePath = getServiceConfig().getJsonObject("sql").getString("signal");
-        signalQuery = new String(Files.readAllBytes(Paths.get(queryFilePath)));
-        getLogger().info("Loaded signal generation SQL query from: " + queryFilePath);
+    private String loadQuery(String queryFilePath) throws Exception {
+        String query = new String(Files.readAllBytes(Paths.get(queryFilePath)));
+        getLogger().info("Loaded SQL query from: " + queryFilePath);
+        return query;
     }
 
-    private void loadFilterQueries() throws Exception {
-        JsonArray filterPaths = getServiceConfig().getJsonObject("sql").getJsonArray("filter");
-        filterQueries = new String[filterPaths.size()];
-        for (int i = 0; i < filterPaths.size(); i++) {
-            filterQueries[i] = new String(Files.readAllBytes(Paths.get(filterPaths.getString(i))));
-            getLogger().info("Loaded filter SQL query from: " + filterPaths.getString(i));
+    private JsonObject loadFilterQueries() throws Exception {
+        JsonObject sqlConfig = getServiceConfig().getJsonObject("sql").getJsonObject("filter");
+        JsonObject filterQueries = new JsonObject();
+
+        // Iterate over each key in the "filter" section
+        for (String category : sqlConfig.fieldNames()) {
+            JsonArray paths = sqlConfig.getJsonArray(category);
+            JsonArray queries = new JsonArray();
+
+            // Load each query file for the current category
+            for (int i = 0; i < paths.size(); i++) {
+                String path = paths.getString(i);
+                String query = loadQuery(path); // Reuse loadQuery
+
+                // Add both the filename and query content
+                JsonObject queryObject = new JsonObject()
+                        .put("filename", path)
+                        .put("query", query);
+                queries.add(queryObject);
+
+                getLogger().info("Loaded filter SQL query for category '" + category + "' from: " + path);
+            }
+
+            // Add the loaded queries to the JsonObject under their category
+            filterQueries.put(category, queries);
         }
+
+        return filterQueries;
     }
 
     private void generateSignals() {
         try {
-            loadSignalQuery();  // Reload the query to reflect changes
-            loadFilterQueries();
+            JsonObject sqlConfig = getServiceConfig().getJsonObject("sql");
+            String findTickerQuery = loadQuery(sqlConfig.getJsonObject("find").getString("ticker"));
+            String findExpirationQuery = loadQuery(sqlConfig.getJsonObject("find").getString("expiration"));
+            String findStrikesQuery = loadQuery(sqlConfig.getJsonObject("find").getString("strikes"));
+            JsonObject filterQueries = loadFilterQueries();
 
-            ResultSet tickerResultSet = optionsDbConnection.createStatement().executeQuery("SELECT ticker_symbol FROM ticker");
+            ResultSet tickerResultSet = optionsDbConnection.createStatement().executeQuery(findTickerQuery);
             while (tickerResultSet.next()) {
                 String ticker = tickerResultSet.getString("ticker_symbol");
-                String expirationDate = SqlUtil.findClosestExpiration(optionsDbConnection, ticker, 45);
-                getLogger().info("Processing Ticker: " + ticker + " with Expiration: " + expirationDate);
+                getLogger().info("Processing Ticker: " + ticker);
 
-                try (PreparedStatement stmt = optionsDbConnection.prepareStatement(signalQuery)) {
-                    stmt.setString(1, ticker);
-                    stmt.setString(2, expirationDate);
+                String logPrefix = ticker;
+                // Apply ticker-level filters
+                if (!applyFilters(logPrefix, filterQueries.getJsonArray("ticker"), ticker)) {
+                    continue;
+                }
 
-                    ResultSet rs = stmt.executeQuery();
-                    JsonArray signalsArray = new JsonArray();
+                // Execute expiration query
+                PreparedStatement expirationStmt = optionsDbConnection.prepareStatement(findExpirationQuery);
+                expirationStmt.setString(1, ticker);
+                ResultSet expirationResultSet = expirationStmt.executeQuery();
+                if (!expirationResultSet.next()) {
+                    getLogger().info("No valid expiration found for ticker: " + ticker);
+                    continue;
+                }
+                String expirationDate = expirationResultSet.getString("expiration_date");
+                logPrefix = ticker + " | " + expirationDate;
+                // Apply expiration-level filters
+                if (!applyFilters(logPrefix, filterQueries.getJsonArray("expiration"), ticker, expirationDate)) {
+                    continue;
+                }
 
-                    while (rs.next()) {
-                        String signalsJson = rs.getString("signals");
-                        if (signalsJson != null && !signalsJson.isEmpty()) {
-                            JsonArray signals = new JsonArray(signalsJson);
-                            for (int i = 0; i < signals.size(); i++) {
-                                JsonObject signal = signals.getJsonObject(i);
-                                double strikePrice = signal.getDouble("strike_price");
-                                if (applyAllFilters(ticker, expirationDate, strikePrice)) {
-                                    signalsArray.add(signal);
-                                }
-                            }
-                        }   else {
-                        getLogger().info("No signals generated for ticker: " + ticker + " and expiration: " + expirationDate);
+                // Execute strikes query
+                PreparedStatement strikesStmt = optionsDbConnection.prepareStatement(findStrikesQuery);
+                strikesStmt.setString(1, ticker);
+                strikesStmt.setString(2, expirationDate);
+                ResultSet strikesResultSet = strikesStmt.executeQuery();
+
+                // Process each strike
+                while (strikesResultSet.next()) {
+                    double strikePrice = strikesResultSet.getDouble("strike_price");
+
+                    logPrefix = ticker + " | " + expirationDate + " | " + strikePrice;
+                    // Apply strike-level filters
+                    if (!applyFilters(logPrefix, filterQueries.getJsonArray("strike"), ticker, expirationDate, strikePrice)) {
+                        continue;
                     }
-
                 }
 
-                    getLogger().info("Generated Signals for " + ticker + ": " + signalsArray.encodePrettily());
-                }
+                strikesStmt.close();
             }
+
+            tickerResultSet.close();
         } catch (Exception e) {
             e.printStackTrace();
             getLogger().severe("Error during signal generation: " + e.getMessage());
         }
     }
 
-    private boolean applyAllFilters(String ticker, String expirationDate, double strikePrice) {
-        try {
-            for (int i = 0; i < filterQueries.length; i++) {
-                String filterQuery = filterQueries[i];
-                String filterFileName = getServiceConfig().getJsonObject("sql").getJsonArray("filter").getString(i);
-                if (!applyFilter(filterQuery, filterFileName, ticker, expirationDate, strikePrice)) {
-                    return false;
+    private boolean applyFilters(String logPrefix, JsonArray filters, Object... params) {
+        for (int i = 0; i < filters.size(); i++) {
+            JsonObject filter = filters.getJsonObject(i);
+            String filename = filter.getString("filename");
+            String query = filter.getString("query");
+            String ticker = params[0].toString();
+
+            try {
+                PreparedStatement stmt = optionsDbConnection.prepareStatement(query);
+
+                // Set parameters dynamically
+                for (int j = 0; j < params.length; j++) {
+                    stmt.setObject(j + 1, params[j]);
                 }
-            }
-            return true;
-        } catch (Exception e) {
-            getLogger().severe("Error applying filters: " + e.getMessage());
-            return false;
-        }
-    }
 
-    private boolean applyFilter(String sqlQuery, String filterFileName, String ticker, String expirationDate, double strikePrice) throws Exception {
-        try (PreparedStatement stmt = optionsDbConnection.prepareStatement(sqlQuery)) {
-            stmt.setString(1, ticker);
-            stmt.setString(2, expirationDate);
-            stmt.setDouble(3, strikePrice);
+                ResultSet resultSet = stmt.executeQuery();
+                boolean passed = resultSet.next() && resultSet.getBoolean(1);
 
-            ResultSet rs = stmt.executeQuery();
-             if (rs.next() && rs.getBoolean("passed")) {
-                getLogger().info("✅ Passed filter [" + filterFileName + "] for Ticker: " + ticker + ", Expiration: " + expirationDate + ", Strike: " + strikePrice);
-                return true;
-            } else {
-                getLogger().info("❌ Failed filter [" + filterFileName + "] for Ticker: " + ticker + ", Expiration: " + expirationDate + ", Strike: " + strikePrice);
-                return false;
+                if (passed) {
+                    getLogger().info(logPrefix+": ✅ Filter passed: " + filename);
+                } else {
+                    getLogger().warning(logPrefix+": ❌ Filter failed: " + filename);
+                    return false; // Stop processing on first failed filter
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                getLogger().severe(logPrefix+": ❌ Error applying filter: " + filename + " | Error: " + e.getMessage());
+                return false; // Treat any exception as a failed filter
             }
         }
+        return true; // All filters passed
     }
-
+    
     @Override
     public void stop() throws Exception {
         super.stop();
